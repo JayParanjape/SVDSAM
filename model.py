@@ -11,7 +11,6 @@ from functools import partial, reduce
 from operator import mul
 import math
 from typing import Union, List
-from model_components.fdn import FDN
 
 class Prompt_Adapted_SAM(nn.Module):
     def __init__(
@@ -78,10 +77,6 @@ class Prompt_Adapted_SAM(nn.Module):
                 self.label_dict = self.label_dict.update({
                                         'other': self.num_classes
                                     })
-
-        #define feature denormalization module if it is to be used
-        if self.use_fdn:
-            self.FDN_branch = FDN(norm_nc=256, input_nc=3, reduction_factor=4).to(device)
 
         #initialize sam with pretrained weights
         sam_ckpt = '/home/ubuntu/Desktop/Domain_Adaptation_Project/repos/segment-anything/checkpoints/sam_vit_b_01ec64.pth'

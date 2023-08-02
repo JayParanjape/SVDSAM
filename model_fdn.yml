@@ -1,0 +1,25 @@
+sam:
+  img_size: 256
+  num_classes: 2
+
+img_type: 'ct'
+arch: "Prompt Adapted SAM"
+use_fdn: True
+
+prompts:
+  USE_TEXT_PROMPT: True
+  USE_IMAGE_PROMPT: True
+  LOCATION: 'prepend'
+  DROPOUT: 0.1
+  NUM_TOKENS: 5
+
+training:
+  optimizer: 'adamw'
+  lr: 1e-2
+  batch_size: 4
+  num_epochs: 1000
+  schedule_step: 200
+  schedule_step_factor: 0.5
+  weight_decay: 1e-7
+  loss: 'dice'
+

@@ -80,7 +80,7 @@ class Prompt_Adapted_SAM(nn.Module):
 
         #initialize sam with pretrained weights
         sam_ckpt = '/home/ubuntu/Desktop/Domain_Adaptation_Project/repos/segment-anything/checkpoints/sam_vit_b_01ec64.pth'
-        # sam_ckpt = '/data/jparanj1/sam_vit_b_01ec64.pth'
+        # sam_ckpt = '/mnt/store/jparanj1/sam_vit_b_01ec64.pth'
         sam_state_dict = torch.load(sam_ckpt)
         for k in list(sam_state_dict.keys()):
             if self.img_size!=1024:

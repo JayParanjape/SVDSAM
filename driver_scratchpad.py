@@ -22,7 +22,7 @@ def parse_args():
 
     parser.add_argument('--save_path', default='checkpoints/temp.pth',
                         help='pretrained model path')
-    parser.add_argument('--training_strategy', default='biastuning', help='how to train the model')
+    parser.add_argument('--training_strategy', default='svdtuning', help='how to train the model')
 
     parser.add_argument('--device', default='cuda:0', help='device to train on')
 
@@ -48,13 +48,37 @@ def main_datautils(config, use_norm=True):
 
 def main_model(config):
     print(config)
+    training_strategy = 'svdtuning'
     label_dict = {
         'liver':0,
         'tumor':1
     }
     model = Prompt_Adapted_SAM(config, label_dict)
+
+
+    #freeze correct weights
+    for p in model.parameters():
+        p.requires_grad=False
+
+    #unfreeze according to strategy:    
     for name, p in model.named_parameters():
-        print(name)
+        if training_strategy=='svdtuning':
+            if 'trainable' in name.lower():
+                p.requires_grad = True
+        elif training_strategy=='biastuning':
+            if ('bias' in name.lower()) and ('clip' not in name.lower()):
+                p.requires_grad = True
+        elif training_strategy=='svdbiastuning':
+            if 'trainable' in name.lower():
+                p.requires_grad = True
+            if ('bias' in name.lower()) and ('clip' not in name.lower()):
+                p.requires_grad = True
+
+    for name, p in model.named_parameters():
+        if p.requires_grad:
+            print(name)
+    print('number of trainable parameters: ', sum(p.numel() for p in model.parameters() if p.requires_grad))
+    
     return
 
 def main_test(data_config, model_config, pretrained_path):
@@ -116,39 +140,20 @@ def main_train(data_config, model_config, pretrained_path, save_path, training_s
     #freeze correct weights
     for p in model.parameters():
         p.requires_grad=False
-    if 'biastuning' in training_strategy:
-        for name, p in model.named_parameters():
-            if 'bias' in name:
-                p.requires_grad = True
-    elif 'prompt_tuning' in training_strategy:
-        for name,p in model.named_parameters():
-            if 'prompt' in name:
-                p.requires_grad = True
-            if 'decoder' in name:
-                p.requires_grad = True
-            if 'Text_Embedding_Affine' in name:
-                p.requires_grad = True
-    elif 'fdn' in training_strategy:
-        for name,p in model.named_parameters():
-            if 'FDN' in name:
-                p.requires_grad = True
 
-    #train common layers for all strategies
+    #unfreeze according to strategy:    
     for name, p in model.named_parameters():
-        if 'norm' in name.lower():
-            p.requires_grad = True
-        if 'pos_embed' in name.lower():
-            p.requires_grad = True
-        if 'Text_Embedding_Affine' in name:
-            p.requires_grad = True
-        if 'prompt' in name:
-            p.requires_grad = True
-        if 'decoder' in name:
-            p.requires_grad = True
-        #disable clip params for now
-        if 'clip' in name.lower():
-            p.requires_grad = False
-
+        if training_strategy=='svdtuning':
+            if 'trainable' in name.lower():
+                p.requires_grad = True
+        elif training_strategy=='biastuning':
+            if ('bias' in name.lower()) and ('clip' not in name.lower()):
+                p.requires_grad = True
+        elif training_strategy=='svdbiastuning':
+            if 'trainable' in name.lower():
+                p.requires_grad = True
+            if ('bias' in name.lower()) and ('clip' not in name.lower()):
+                p.requires_grad = True
 
     #training parameters
     print('number of trainable parameters: ', sum(p.numel() for p in model.parameters() if p.requires_grad))

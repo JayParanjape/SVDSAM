@@ -13,7 +13,7 @@ import torch.nn.functional as F
 from typing import Optional, Tuple, Type
 
 from .common import LayerNorm2d, MLPBlock
-from .svd_layers import SVDLinear
+from .svd_layers import SVDLinear, SVDConv2d
 
 # This class and its supporting functions below lightly adapted from the ViTDet backbone available at: https://github.com/facebookresearch/detectron2/blob/main/detectron2/modeling/backbone/vit.py # noqa
 class ImageEncoderViT(nn.Module):
@@ -105,14 +105,14 @@ class ImageEncoderViT(nn.Module):
             self.blocks.append(block)
 
         self.neck = nn.Sequential(
-            nn.Conv2d(
+            SVDConv2d(
                 embed_dim,
                 out_chans,
                 kernel_size=1,
                 bias=False,
             ),
             LayerNorm2d(out_chans),
-            nn.Conv2d(
+            SVDConv2d(
                 out_chans,
                 out_chans,
                 kernel_size=3,
@@ -281,8 +281,8 @@ class Attention(nn.Module):
         head_dim = dim // num_heads
         self.scale = head_dim**-0.5
 
-        self.qkv = nn.Linear(dim, dim * 3, bias=qkv_bias)
-        self.proj = nn.Linear(dim, dim)
+        self.qkv = SVDLinear(dim, dim * 3, bias=qkv_bias)
+        self.proj = SVDLinear(dim, dim)
 
         self.use_rel_pos = use_rel_pos
         if self.use_rel_pos:

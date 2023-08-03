@@ -8,7 +8,7 @@ import torch
 import torch.nn as nn
 
 from typing import Type
-
+from .svd_layers import SVDLinear
 
 class MLPBlock(nn.Module):
     def __init__(
@@ -18,8 +18,8 @@ class MLPBlock(nn.Module):
         act: Type[nn.Module] = nn.GELU,
     ) -> None:
         super().__init__()
-        self.lin1 = nn.Linear(embedding_dim, mlp_dim)
-        self.lin2 = nn.Linear(mlp_dim, embedding_dim)
+        self.lin1 = SVDLinear(embedding_dim, mlp_dim)
+        self.lin2 = SVDLinear(mlp_dim, embedding_dim)
         self.act = act()
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:

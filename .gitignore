@@ -1,0 +1,8 @@
+*.pyc
+*.pth
+*.gz
+*.zip
+*.png
+*.jpg
+*.tif
+__pycache__

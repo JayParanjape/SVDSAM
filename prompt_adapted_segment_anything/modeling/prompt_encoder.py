@@ -9,6 +9,7 @@ import torch
 from torch import nn
 
 from typing import Any, Optional, Tuple, Type
+from .svd_layers import SVDLinear, SVDConv2d
 
 from .common import LayerNorm2d
 

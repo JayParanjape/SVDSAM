@@ -73,6 +73,10 @@ def main_model(config):
                 p.requires_grad = True
             if ('bias' in name.lower()) and ('clip' not in name.lower()):
                 p.requires_grad = True
+        
+        if model_config['prompts']['USE_TEXT_PROMPT']:
+            if 'Text_Embedding_Affine' in name:
+                p.requires_grad = True
 
     for name, p in model.named_parameters():
         if p.requires_grad:
@@ -130,6 +134,8 @@ def main_train(data_config, model_config, pretrained_path, save_path, training_s
     #load model
     #change the img size in model config according to data config
     model_config['sam']['img_size'] = data_config['data_transforms']['img_size']
+    model_config['sam']['num_classes'] = len(data_config['data']['label_list'])
+
     if model_config['arch']=='Prompt Adapted SAM':
         model = Prompt_Adapted_SAM(model_config, label_dict, device, training_strategy=training_strategy)
 
@@ -154,6 +160,18 @@ def main_train(data_config, model_config, pretrained_path, save_path, training_s
                 p.requires_grad = True
             if ('bias' in name.lower()) and ('clip' not in name.lower()):
                 p.requires_grad = True
+
+        if model_config['prompts']['USE_TEXT_PROMPT']:
+            if 'Text_Embedding_Affine' in name:
+                p.requires_grad = True
+
+        if model_config['decoder_training']=='full':
+            if ('decoder' in name.lower()) and ('clip' not in name.lower()):
+                p.requires_grad = True
+        elif model_config['decoder_training']=='svdtuning':
+            if 'trainable' in name.lower():
+                p.requires_grad = True
+
 
     #training parameters
     print('number of trainable parameters: ', sum(p.numel() for p in model.parameters() if p.requires_grad))

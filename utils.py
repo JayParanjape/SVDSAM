@@ -35,10 +35,10 @@ def dice_batchwise(running_intersection, running_union, smooth =1):
     return dice
 
 def dice_loss(y_pred, y_true):
-    numerator = (2 * torch.sum(y_true * y_pred, axis=(-1,-2)))
-    denominator = torch.sum(y_true + y_pred, axis=(-1,-2))
+    numerator = (2 * torch.sum(y_true * y_pred))
+    denominator = torch.sum(y_true + y_pred)
 
-    return 1 - torch.mean((numerator+1) / (denominator+1))
+    return 1 - ((numerator+1) / (denominator+1))
 
 def weighted_ce_loss(y_pred, y_true, alpha=64, smooth=1):
     weight1 = torch.sum(y_true==1,dim=(-1,-2))+smooth

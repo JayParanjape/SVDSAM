@@ -150,7 +150,7 @@ def main_train(data_config, model_config, pretrained_path, save_path, training_s
     #unfreeze according to strategy:    
     for name, p in model.named_parameters():
         if training_strategy=='svdtuning':
-            if 'trainable' in name.lower():
+            if 'trainable_shift' in name.lower():
                 p.requires_grad = True
         elif training_strategy=='biastuning':
             if ('bias' in name.lower()) and ('clip' not in name.lower()):
@@ -171,7 +171,20 @@ def main_train(data_config, model_config, pretrained_path, save_path, training_s
         elif model_config['decoder_training']=='svdtuning':
             if 'trainable' in name.lower():
                 p.requires_grad = True
+        elif model_config['decoder_training']=='none':
+            if 'decoder' in name.lower():
+                p.requires_grad = False
+        
+        if 'prompt_encoder' in name.lower():
+            p.requires_grad = False
 
+        #common parameters
+        if 'norm' in name.lower():
+            p.requires_grad = True
+        if 'pos_embed' in name.lower():
+            p.requires_grad = True
+        if 'clip' in name.lower():
+            p.requires_grad = False
 
     #training parameters
     print('number of trainable parameters: ', sum(p.numel() for p in model.parameters() if p.requires_grad))
@@ -192,23 +205,26 @@ def main_train(data_config, model_config, pretrained_path, save_path, training_s
     if criterion==[]:
         criterion = [nn.BCELoss()]
     
+    retain_graph = False if model_config['decoder_training']=='none' else True
+    # retain_graph=False
+
     #train the model
     if data_config['data']['name']=='LITS':
         model = train(model, dataset_dict['train'], dataset_dict['val'], criterion, optimizer, save_path, num_epochs=training_params['num_epochs'], bs=training_params['batch_size'], device=device)
     elif data_config['data']['name']=='IDRID':
-        model = train_dl(model, dataloader_dict, dataset_sizes, criterion, optimizer, exp_lr_scheduler, save_path, num_epochs=training_params['num_epochs'], bs=training_params['batch_size'], device=device)
+        model = train_dl(model, dataloader_dict, dataset_sizes, criterion, optimizer, exp_lr_scheduler, save_path, num_epochs=training_params['num_epochs'], bs=training_params['batch_size'], device=device, retain_graph=retain_graph)
     elif data_config['data']['name']=='ENDOVIS':
-        model = train_dl(model, dataloader_dict, dataset_sizes, criterion, optimizer, exp_lr_scheduler, save_path, num_epochs=training_params['num_epochs'], bs=training_params['batch_size'], device=device)
+        model = train_dl(model, dataloader_dict, dataset_sizes, criterion, optimizer, exp_lr_scheduler, save_path, num_epochs=training_params['num_epochs'], bs=training_params['batch_size'], device=device, retain_graph=retain_graph)
     elif data_config['data']['name']=='ENDOVIS 18':
-        model = train_dl(model, dataloader_dict, dataset_sizes, criterion, optimizer, exp_lr_scheduler, save_path, num_epochs=training_params['num_epochs'], bs=training_params['batch_size'], device=device)
+        model = train_dl(model, dataloader_dict, dataset_sizes, criterion, optimizer, exp_lr_scheduler, save_path, num_epochs=training_params['num_epochs'], bs=training_params['batch_size'], device=device, retain_graph=retain_graph)
     elif data_config['data']['name']=='CHOLEC 8K':
-        model = train_dl(model, dataloader_dict, dataset_sizes, criterion, optimizer, exp_lr_scheduler, save_path, num_epochs=training_params['num_epochs'], bs=training_params['batch_size'], device=device)
+        model = train_dl(model, dataloader_dict, dataset_sizes, criterion, optimizer, exp_lr_scheduler, save_path, num_epochs=training_params['num_epochs'], bs=training_params['batch_size'], device=device, retain_graph=retain_graph)
     elif data_config['data']['name']=='ULTRASOUND':
-        model = train_dl(model, dataloader_dict, dataset_sizes, criterion, optimizer, exp_lr_scheduler, save_path, num_epochs=training_params['num_epochs'], bs=training_params['batch_size'], device=device)
+        model = train_dl(model, dataloader_dict, dataset_sizes, criterion, optimizer, exp_lr_scheduler, save_path, num_epochs=training_params['num_epochs'], bs=training_params['batch_size'], device=device, retain_graph=retain_graph)
     elif data_config['data']['name']=='KVASIRSEG':
-        model = train_dl(model, dataloader_dict, dataset_sizes, criterion, optimizer, exp_lr_scheduler, save_path, num_epochs=training_params['num_epochs'], bs=training_params['batch_size'], device=device)
+        model = train_dl(model, dataloader_dict, dataset_sizes, criterion, optimizer, exp_lr_scheduler, save_path, num_epochs=training_params['num_epochs'], bs=training_params['batch_size'], device=device, retain_graph=retain_graph)
     elif data_config['data']['name']=='CHESTXDET':
-        model = train_dl(model, dataloader_dict, dataset_sizes, criterion, optimizer, exp_lr_scheduler, save_path, num_epochs=training_params['num_epochs'], bs=training_params['batch_size'], device=device)
+        model = train_dl(model, dataloader_dict, dataset_sizes, criterion, optimizer, exp_lr_scheduler, save_path, num_epochs=training_params['num_epochs'], bs=training_params['batch_size'], device=device, retain_graph=retain_graph)
 
 
 if __name__ == '__main__':

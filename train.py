@@ -102,7 +102,7 @@ def train(model, tr_dataset, val_dataset, criterion, optimizer, sav_path='./chec
 
     return model
 
-def train_dl(model, dataloaders, dataset_sizes, criterion, optimizer, scheduler, sav_path='./checkpoints/temp.pth', num_epochs=25, bs=32, device='cuda:0'):
+def train_dl(model, dataloaders, dataset_sizes, criterion, optimizer, scheduler, sav_path='./checkpoints/temp.pth', num_epochs=25, bs=32, device='cuda:0', retain_graph=False):
     model = model.to(device)
     best_dice = 0
     best_loss=10000
@@ -159,7 +159,7 @@ def train_dl(model, dataloaders, dataset_sizes, criterion, optimizer, scheduler,
                     
                     # backward + optimize only if in training phase
                     if phase == 'train':
-                        loss.backward()
+                        loss.backward(retain_graph=retain_graph)
                         optimizer.step()
 
                 with torch.no_grad():

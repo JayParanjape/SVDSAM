@@ -22,4 +22,4 @@ training:
   schedule_step: 2000
   schedule_step_factor: 0.5
   weight_decay: 1e-2
-  loss: 'focal'
+  loss: 'focal+dice'

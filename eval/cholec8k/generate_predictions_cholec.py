@@ -3,7 +3,7 @@ import yaml
 import sys
 import copy
 import os
-sys.path.append("/home/ubuntu/Desktop/Domain_Adaptation_Project/repos/biastuning/")
+sys.path.append("/home/ubuntu/Desktop/Domain_Adaptation_Project/repos/SVDSAM/")
 
 from data_utils import *
 from model import *
@@ -81,8 +81,8 @@ def main():
         os.makedirs(os.path.join(args.save_path,"rescaled_gt"),exist_ok=True)
 
     #load model
-    model = Prompt_Adapted_SAM(config=model_config, label_text_dict=label_dict, device=args.device,training_strategy='biastuning')
-    model.load_state_dict(torch.load(args.pretrained_path, map_location=args.device),strict=False)
+    model = Prompt_Adapted_SAM(config=model_config, label_text_dict=label_dict, device=args.device,training_strategy='svdtuning')
+    model.load_state_dict(torch.load(args.pretrained_path, map_location=args.device),strict=True)
     model = model.to(args.device)
     model = model.eval()
 
@@ -95,8 +95,8 @@ def main():
 
     #load data
     for i,img_name in enumerate(sorted(os.listdir(args.data_folder))):
-        # if i%20!=0:
-        #     continue
+        if i%5!=0:
+            continue
         img_path = (os.path.join(args.data_folder,img_name))
         if args.gt_path:
             gt_path = (os.path.join(args.gt_path,img_name[:img_name.find('.')]+'_watershed_mask.png'))

@@ -3,7 +3,7 @@ import yaml
 import sys
 import copy
 import os
-sys.path.append("/home/ubuntu/Desktop/Domain_Adaptation_Project/repos/biastuning/")
+sys.path.append("/home/ubuntu/Desktop/Domain_Adaptation_Project/repos/SVDSAM/")
 
 from data_utils import *
 from model import *

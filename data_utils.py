@@ -15,6 +15,7 @@ from torch.nn.functional import pad
 from skimage.transform import resize
 import nibabel as nib
 import time
+import json
 
 from data_transforms.endovis_transform import ENDOVIS_Transform
 from data_transforms.endovis_18_transform import ENDOVIS_18_Transform
@@ -22,6 +23,66 @@ from data_transforms.cholec_8k_transform import Cholec_8k_Transform
 from data_transforms.ultrasound_transform import Ultrasound_Transform
 from data_transforms.kvasirSeg_transform import kvasirSeg_Transform
 from data_transforms.ChestXDet_transform import ChestXDet_Transform
+
+def make_positive_negative_files(config, output_root, label_dict, populated_img_path_list, populated_gt_list, populated_classname_list, rgb_gt = False, name_prefix='val'):
+    # generates positive and negative example files for each class
+    #positive example file has a list of all images and labels where the class is present
+    #negative example file has a list of all images where the class is not present
+    os.makedirs(output_root, exist_ok=True)
+    assert(len(populated_classname_list) == len(populated_gt_list))
+    assert(len(populated_classname_list) == len(populated_img_path_list))
+
+    main_dict = {}
+    #make dicts for every class
+    for c in np.unique(populated_classname_list):
+        print(c)
+        main_dict[c] = {}
+        main_dict[c]['pos_img'] = []
+        main_dict[c]['pos_label'] = []
+        main_dict[c]['neg_img'] = []
+
+    for i in range(len(populated_classname_list)):
+        class_name = populated_classname_list[i]
+        gt_path = populated_gt_list[i]
+        im_path = populated_img_path_list[i]
+
+        #check if gt is all blank
+        if rgb_gt:
+            gt = np.array(Image.open(gt_path).convert("RGB"))
+            # if config['data']['volume_channel']==2:
+            #     gt = gt.permute(2,0,1)
+            mask = np.zeros((gt.shape[0], gt.shape[1]))
+        else:
+            gt = np.array(Image.open(gt_path))
+            if len(gt.shape)==3:
+                gt = gt[:,:,0]
+            if gt.max()<2:
+                gt = (gt*255).astype(int)
+            mask = np.zeros((gt.shape[0], gt.shape[1]))
+
+        H,W = mask.shape
+        selected_color_list = label_dict[class_name]
+        temp = np.zeros((H,W)).astype('uint8')
+        if rgb_gt:
+            for c in selected_color_list:
+                temp = temp | (np.all(np.where(gt==c,1,0),axis=2))
+        else:
+            temp = (gt==label_dict[class_name])
+        mask[:,:] = temp
+        if mask.any():
+            main_dict[class_name]['pos_img'].append(im_path)
+            main_dict[class_name]['pos_label'].append(gt_path)
+        else:
+            main_dict[class_name]['neg_img'].append(im_path)
+
+    with open(os.path.join(output_root, name_prefix+"_pos_neg_dict.json"),'w') as fp:
+        json.dump(main_dict, fp)
+
+    print("json file successfully created")
+    return
+
+
+
 
 class Slice_Transforms:
     def __init__(self, config=None):
@@ -445,6 +506,7 @@ class Cholec_Ins_Dataset(Dataset):
         self.label_names = config['data']['label_names']
         self.config = config
         self.no_text_mode = no_text_mode
+        self.shuffle_list = shuffle_list
         self.apply_norm = apply_norm
         self.data_transform = Cholec_8k_Transform(config=config)
         self.label_dict = {
@@ -469,13 +531,30 @@ class Cholec_Ins_Dataset(Dataset):
             self.folder_list = ['video27','video28']
         #populate the above lists
         self.populate_lists()
+
+        #get positive negative lists dictionary
+        try:
+            if is_train:
+                fp = open(os.path.join(self.root_path,'train_pos_neg_dict.json'))
+            else:
+                fp = open(os.path.join(self.root_path,'val_pos_neg_dict.json'))
+
+            self.pos_neg_dict = json.load(fp)
+        except:
+            print("Passing because pos neg json not found")
+            pass
+
         if shuffle_list:
             p = [x for x in range(len(self.img_path_list))]
             random.shuffle(p)
             self.img_path_list = [self.img_path_list[pi] for pi in p]
-            self.img_names = [self.img_names[pi] for pi in p]
+            # self.img_names = [self.img_names[pi] for pi in p]
             self.label_path_list = [self.label_path_list[pi] for pi in p]
             self.label_list = [self.label_list[pi] for pi in p]
+        
+        self.final_img_path_list = self.img_path_list
+        self.final_label_list = self.label_list
+        self.final_label_path_list = self.label_path_list
 
     def populate_lists(self):
         for folder in (self.folder_list):
@@ -499,18 +578,55 @@ class Cholec_Ins_Dataset(Dataset):
                             self.img_path_list.append(im_path)
                             self.label_path_list.append(label_img_path)
                             self.label_list.append(label_name)
-    
+
+    def one_time_generate_pos_neg_list_dicts(self, prefix):
+        make_positive_negative_files(self.config, self.root_path, self.label_dict, self.img_path_list, self.label_path_list, self.label_list, name_prefix=prefix)
+
+    def generate_examples(self, pos2neg_ratio=2):
+        self.final_img_path_list = []
+        self.final_img_names = []
+        self.final_label_path_list = []
+        self.final_label_list = []
+
+        for c in self.pos_neg_dict:
+            for i,pos_im in enumerate(self.pos_neg_dict[c]['pos_img']):
+                self.final_img_path_list.append(pos_im)
+                self.final_label_path_list.append(self.pos_neg_dict[c]['pos_label'][i])
+                self.final_label_list.append(c)
+            # print(c, len(self.pos_neg_dict[c]['pos_img']), len(self.pos_neg_dict[c]['neg_img']))
+            try:
+                selected_neg_samples = random.sample(self.pos_neg_dict[c]['neg_img'], pos2neg_ratio*len(self.pos_neg_dict[c]['pos_img']))
+            except:
+                selected_neg_samples = self.pos_neg_dict[c]['neg_img']
+            self.final_img_path_list = self.final_img_path_list + selected_neg_samples
+            self.final_label_path_list = self.final_label_path_list + [None]*len(selected_neg_samples)
+            self.final_label_list = self.final_label_list + [c]*len(selected_neg_samples)
+        
+        #shuffle if required
+        if self.shuffle_list:
+            p = [x for x in range(len(self.final_img_path_list))]
+            random.shuffle(p)
+            self.final_img_path_list = [self.final_img_path_list[pi] for pi in p]
+            self.final_label_path_list = [self.final_label_path_list[pi] for pi in p]
+            self.final_label_list = [self.final_label_list[pi] for pi in p]
+        return
+            
+
     def __len__(self):
-        return len(self.img_path_list)
+        return len(self.final_img_path_list)
 
 
     def __getitem__(self, index):
-        img = torch.as_tensor(np.array(Image.open(self.img_path_list[index]).convert("RGB")))
+        img = torch.as_tensor(np.array(Image.open(self.final_img_path_list[index]).convert("RGB")))
+        
+        label_of_interest = self.final_label_list[index]
+        if self.final_label_path_list[index] is None:
+            gold = np.zeros_like(img)
+        else:
+            gold = np.array(Image.open(self.final_label_path_list[index]))
+
         if self.config['data']['volume_channel']==2:
             img = img.permute(2,0,1)
-
-        label_of_interest = self.label_list[index]
-        gold = np.array(Image.open(self.label_path_list[index]))
 
         if len(gold.shape)==3:
             gold = gold[:,:,0]
@@ -544,7 +660,7 @@ class Cholec_Ins_Dataset(Dataset):
             mask = mask[0]
             # plt.imshow(mask, cmap='gray')
             # plt.show()
-        return img, mask, self.img_path_list[index], label_of_interest
+        return img, mask, self.final_img_path_list[index], label_of_interest
 
 class ChestXDet_Dataset(Dataset):
     def __init__(self, config, start = 0, end = 69565, is_train=False, apply_norm=True, shuffle_list=True, no_text_mode=False) -> None:
@@ -663,6 +779,7 @@ class Endovis_18(Dataset):
         self.is_train = is_train
         self.start = start
         self.end = end
+        self.shuffle_list = shuffle_list
         self.label_names = config['data']['label_names']
         self.config = config
         self.no_text_mode = no_text_mode
@@ -688,13 +805,30 @@ class Endovis_18(Dataset):
 
 
         self.populate_lists()
+
+        #get positive negative lists dictionary
+        try:
+            if is_train:
+                fp = open(os.path.join(self.root_path,'train_pos_neg_dict.json'))
+            else:
+                fp = open(os.path.join(self.root_path,'val_pos_neg_dict.json'))
+
+            self.pos_neg_dict = json.load(fp)
+        except:
+            print("Passing because pos neg json not found")
+            pass
+
         if shuffle_list:
             p = [x for x in range(len(self.img_path_list))]
             random.shuffle(p)
             self.img_path_list = [self.img_path_list[pi] for pi in p]
-            self.img_names = [self.img_names[pi] for pi in p]
+            # self.img_names = [self.img_names[pi] for pi in p]
             self.label_path_list = [self.label_path_list[pi] for pi in p]
             self.label_list = [self.label_list[pi] for pi in p]
+        
+        self.final_img_path_list = self.img_path_list
+        self.final_label_list = self.label_list
+        self.final_label_path_list = self.label_path_list
 
         #define data transform
         self.data_transform = ENDOVIS_18_Transform(config=config)
@@ -702,6 +836,8 @@ class Endovis_18(Dataset):
     def populate_lists(self):
         #generate dataset for instrument 1 4 training
         for dataset_num in os.listdir(self.root_path):
+            if 'json' in dataset_num:
+                continue
             for seq in os.listdir(os.path.join(self.root_path, dataset_num)):
                 if seq not in self.seqs:
                     continue
@@ -723,8 +859,40 @@ class Endovis_18(Dataset):
                             self.label_list.append(label_name)
                             self.label_path_list.append(lbl_path)
 
+    def one_time_generate_pos_neg_list_dicts(self, prefix):
+        make_positive_negative_files(self.config, self.root_path, self.label_dict, self.img_path_list, self.label_path_list, self.label_list, name_prefix=prefix, rgb_gt=True)
+
+    def generate_examples(self, pos2neg_ratio=2):
+        self.final_img_path_list = []
+        self.final_img_names = []
+        self.final_label_path_list = []
+        self.final_label_list = []
+
+        for c in self.pos_neg_dict:
+            for i,pos_im in enumerate(self.pos_neg_dict[c]['pos_img']):
+                self.final_img_path_list.append(pos_im)
+                self.final_label_path_list.append(self.pos_neg_dict[c]['pos_label'][i])
+                self.final_label_list.append(c)
+            # print(c, len(self.pos_neg_dict[c]['pos_img']), len(self.pos_neg_dict[c]['neg_img']))
+            try:
+                selected_neg_samples = random.sample(self.pos_neg_dict[c]['neg_img'], pos2neg_ratio*len(self.pos_neg_dict[c]['pos_img']))
+            except:
+                selected_neg_samples = self.pos_neg_dict[c]['neg_img']
+            self.final_img_path_list = self.final_img_path_list + selected_neg_samples
+            self.final_label_path_list = self.final_label_path_list + [None]*len(selected_neg_samples)
+            self.final_label_list = self.final_label_list + [c]*len(selected_neg_samples)
+        
+        #shuffle if required
+        if self.shuffle_list:
+            p = [x for x in range(len(self.final_img_path_list))]
+            random.shuffle(p)
+            self.final_img_path_list = [self.final_img_path_list[pi] for pi in p]
+            self.final_label_path_list = [self.final_label_path_list[pi] for pi in p]
+            self.final_label_list = [self.final_label_list[pi] for pi in p]
+        return
+
     def __len__(self):
-        return len(self.img_path_list)
+        return len(self.final_img_path_list)
 
     def __getitem__(self, index):
         img = torch.as_tensor(np.array(Image.open(self.img_path_list[index]).convert("RGB")))

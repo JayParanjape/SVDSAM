@@ -102,7 +102,7 @@ def train(model, tr_dataset, val_dataset, criterion, optimizer, sav_path='./chec
 
     return model
 
-def train_dl(model, dataloaders, dataset_sizes, criterion, optimizer, scheduler, sav_path='./checkpoints/temp.pth', num_epochs=25, bs=32, device='cuda:0', retain_graph=False):
+def train_dl(model, datasets, dataset_sizes, criterion, optimizer, scheduler, sav_path='./checkpoints/temp.pth', num_epochs=25, bs=32, device='cuda:0', retain_graph=False):
     model = model.to(device)
     best_dice = 0
     best_loss=10000
@@ -113,10 +113,12 @@ def train_dl(model, dataloaders, dataset_sizes, criterion, optimizer, scheduler,
     for epoch in range(num_epochs):
         print(f'Epoch {epoch}/{num_epochs - 1}')
         print('-' * 10)
+        dataloaders = {}
         # Each epoch has a training and validation phase
         for phase in ['train', 'val']:
             if phase == 'train':
                 model.train()  # Set model to training mode
+                datasets[phase].generate_examples()
             else:
                 model.eval()   # Set model to evaluate mode
 
@@ -129,6 +131,8 @@ def train_dl(model, dataloaders, dataset_sizes, criterion, optimizer, scheduler,
             count = 0
             preds_all = []
             gold = []
+            dataloaders[phase] = torch.utils.data.DataLoader(datasets[phase], batch_size=bs, shuffle=True, num_workers=4)
+
 
             # Iterate over data.
             for inputs, labels,text_idxs, text in dataloaders[phase]:

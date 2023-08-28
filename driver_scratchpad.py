@@ -30,10 +30,33 @@ def parse_args():
 
     return args
 
+def main_onetime_functions(config):
+    dataset_dict, dataset_sizes, label_dict = get_data(config, tr_folder_start=0, tr_folder_end=78000, val_folder_start=0, val_folder_end=104000, use_norm=False)
+    for x in dataset_dict:
+        dataset_dict[x].one_time_generate_pos_neg_list_dicts(x)
+
+
 def main_datautils(config, use_norm=True):
     selected_idxs = [0,12,42,79,100]
     print(config)
     dataset_dict, dataset_sizes, label_dict = get_data(config, tr_folder_start=0, tr_folder_end=78000, val_folder_start=0, val_folder_end=104000, use_norm=use_norm)
+    
+    #test without generating examples for legacy
+    print(len(dataset_dict['train']))
+    # for i in selected_idxs:
+    #     temp = (dataset_dict['train'][i])
+    #     print(temp[-1])
+    #     print(temp[-2])
+    #     print(temp[0].shape)
+    #     print(temp[1].shape)
+    #     plt.imshow(temp[0].permute(1,2,0), cmap='gray')
+    #     plt.show()
+    #     plt.imshow(temp[1], cmap='gray')
+    #     plt.show()
+
+    #test generate examples function
+    print("testing generate examples\n")
+    dataset_dict['train'].generate_examples()
     print(len(dataset_dict['train']))
     for i in selected_idxs:
         temp = (dataset_dict['train'][i])
@@ -150,7 +173,7 @@ def main_train(data_config, model_config, pretrained_path, save_path, training_s
     #unfreeze according to strategy:    
     for name, p in model.named_parameters():
         if training_strategy=='svdtuning':
-            if 'trainable_shift' in name.lower():
+            if 'trainable' in name.lower():
                 p.requires_grad = True
         elif training_strategy=='biastuning':
             if ('bias' in name.lower()) and ('clip' not in name.lower()):
@@ -214,11 +237,11 @@ def main_train(data_config, model_config, pretrained_path, save_path, training_s
     elif data_config['data']['name']=='IDRID':
         model = train_dl(model, dataloader_dict, dataset_sizes, criterion, optimizer, exp_lr_scheduler, save_path, num_epochs=training_params['num_epochs'], bs=training_params['batch_size'], device=device, retain_graph=retain_graph)
     elif data_config['data']['name']=='ENDOVIS':
-        model = train_dl(model, dataloader_dict, dataset_sizes, criterion, optimizer, exp_lr_scheduler, save_path, num_epochs=training_params['num_epochs'], bs=training_params['batch_size'], device=device, retain_graph=retain_graph)
+        model = train_dl(model, dataset_dict, dataset_sizes, criterion, optimizer, exp_lr_scheduler, save_path, num_epochs=training_params['num_epochs'], bs=training_params['batch_size'], device=device, retain_graph=retain_graph)
     elif data_config['data']['name']=='ENDOVIS 18':
-        model = train_dl(model, dataloader_dict, dataset_sizes, criterion, optimizer, exp_lr_scheduler, save_path, num_epochs=training_params['num_epochs'], bs=training_params['batch_size'], device=device, retain_graph=retain_graph)
+        model = train_dl(model, dataset_dict, dataset_sizes, criterion, optimizer, exp_lr_scheduler, save_path, num_epochs=training_params['num_epochs'], bs=training_params['batch_size'], device=device, retain_graph=retain_graph)
     elif data_config['data']['name']=='CHOLEC 8K':
-        model = train_dl(model, dataloader_dict, dataset_sizes, criterion, optimizer, exp_lr_scheduler, save_path, num_epochs=training_params['num_epochs'], bs=training_params['batch_size'], device=device, retain_graph=retain_graph)
+        model = train_dl(model, dataset_dict, dataset_sizes, criterion, optimizer, exp_lr_scheduler, save_path, num_epochs=training_params['num_epochs'], bs=training_params['batch_size'], device=device, retain_graph=retain_graph)
     elif data_config['data']['name']=='ULTRASOUND':
         model = train_dl(model, dataloader_dict, dataset_sizes, criterion, optimizer, exp_lr_scheduler, save_path, num_epochs=training_params['num_epochs'], bs=training_params['batch_size'], device=device, retain_graph=retain_graph)
     elif data_config['data']['name']=='KVASIRSEG':
@@ -234,6 +257,7 @@ if __name__ == '__main__':
     with open(args.model_config, 'r') as f:
         model_config = yaml.load(f, Loader=yaml.FullLoader)
     
+    # main_onetime_functions(data_config)
     # #for checking data_utils
     # main_datautils(data_config, use_norm=False)
 

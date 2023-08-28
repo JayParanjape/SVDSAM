@@ -5,7 +5,7 @@ sam:
 img_type: 'image'
 arch: "Prompt Adapted SAM"
 use_fdn: False
-decoder_training: 'full'
+decoder_training: 'none'
 
 prompts:
   USE_TEXT_PROMPT: True
@@ -16,10 +16,10 @@ prompts:
 
 training:
   optimizer: 'adamw'
-  lr: 1e-4
+  lr: 4e-4
   batch_size: 32
   num_epochs: 1000
   schedule_step: 2000
   schedule_step_factor: 0.5
   weight_decay: 1e-2
-  loss: 'focal+dice'
+  loss: 'CE+dice'

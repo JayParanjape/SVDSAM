@@ -9,7 +9,6 @@ from torch import nn
 from torch.nn import functional as F
 from torch.autograd import Function
 from typing import List, Tuple, Type
-from .svd_layers import SVDLinear, SVDConv2d
 
 from .common import LayerNorm2d
 

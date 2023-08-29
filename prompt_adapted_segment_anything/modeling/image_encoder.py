@@ -40,7 +40,8 @@ class ImageEncoderViT(nn.Module):
             'LOCATION': 'prepend',
             'DROPOUT': 0.1,
             'NUM_TOKENS': 5
-        }
+        },
+        mlp_transform = False
     ) -> None:
         """
         Args:
@@ -101,26 +102,28 @@ class ImageEncoderViT(nn.Module):
                 rel_pos_zero_init=rel_pos_zero_init,
                 window_size=window_size if i not in global_attn_indexes else 0,
                 input_size=(img_size // patch_size, img_size // patch_size),
+                mlp_transform=mlp_transform
             )
             self.blocks.append(block)
 
-        self.neck = nn.Sequential(
-            SVDConv2d(
-                embed_dim,
-                out_chans,
-                kernel_size=1,
-                bias=False,
-            ),
-            LayerNorm2d(out_chans),
-            SVDConv2d(
-                out_chans,
-                out_chans,
-                kernel_size=3,
-                padding=1,
-                bias=False,
-            ),
-            LayerNorm2d(out_chans),
-        )
+        self.neck = Neck(embed_dim, out_chans, mlp_transform = mlp_transform)
+        # self.neck = nn.Sequential(
+        #     SVDConv2d(
+        #         embed_dim,
+        #         out_chans,
+        #         kernel_size=1,
+        #         bias=False,
+        #     ),
+        #     LayerNorm2d(out_chans),
+        #     SVDConv2d(
+        #         out_chans,
+        #         out_chans,
+        #         kernel_size=3,
+        #         padding=1,
+        #         bias=False,
+        #     ),
+        #     LayerNorm2d(out_chans),
+        # )
         if self.prompt_config['USE_IMAGE_PROMPT']:
             val = math.sqrt(6. / float(3 * reduce(mul, self.patch_size, 1) + self.embed_dim))  # noqa
             self.prompt_dropout = nn.Dropout(self.prompt_config['DROPOUT'])
@@ -136,6 +139,7 @@ class ImageEncoderViT(nn.Module):
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         x = self.patch_embed(x)
+        reg_loss = 0
         if self.pos_embed is not None:
             if self.prompt_config['USE_IMAGE_PROMPT']:
                 x = x + self.pos_embed
@@ -151,14 +155,16 @@ class ImageEncoderViT(nn.Module):
             num_layers = len(self.blocks)
             for i in range(num_layers):
                 if i==0:
-                    x = self.blocks[i](x)
+                    x, loss = self.blocks[i](x)
+                    reg_loss += loss
                 else:
                     x = torch.cat((
                         x[:,:1,:],
                         self.prompt_dropout(self.deep_prompt_embeddings[i-1].expand(B,-1,-1)),
                         x[:,(1+self.prompt_config['NUM_TOKENS']):,:]
                     ), dim=1)
-                    x = self.blocks[i](x)
+                    x, loss = self.blocks[i](x)
+                    reg_loss += loss
             
             x = torch.cat((
             x[:,:1,:],
@@ -166,14 +172,16 @@ class ImageEncoderViT(nn.Module):
         ), dim=1)
         else:
             for blk in self.blocks:
-                x = blk(x)
+                x, loss = blk(x)
+                reg_loss += loss
 
         
         resize_dim = self.img_size // self.patch_size[0]
         x = x.view(B, resize_dim, resize_dim, -1)
-        x = self.neck(x.permute(0, 3, 1, 2))
+        x , loss= self.neck(x.permute(0, 3, 1, 2))
+        reg_loss += loss
 
-        return x
+        return x, reg_loss
 
     def incorporate_prompt(self, x):
         B = x.shape[0]
@@ -186,6 +194,22 @@ class ImageEncoderViT(nn.Module):
         else:
             raise ValueError("Other prompt location not supported")
         return x
+
+class Neck(nn.Module):
+    """Neck which is a MLP at the end"""
+    def __init__(self, embed_dim, out_chans, mlp_transform=False):
+        super().__init__()
+        self.conv1 = SVDConv2d(embed_dim, out_chans, kernel_size=1, bias=False, mlp_transform=mlp_transform)
+        self.ln1 = LayerNorm2d(out_chans)
+        self.conv2 = SVDConv2d(out_chans, out_chans, kernel_size=3, padding=1, bias=False, mlp_transform=mlp_transform)
+        self.ln2 = LayerNorm2d(out_chans)        
+
+    def forward(self, x):
+        out, reg_loss1 = self.conv1(x)
+        out = self.ln1(out)
+        out, reg_loss2 = self.conv2(out)
+        out = self.ln2(out)
+        return out, (reg_loss1+reg_loss2)
 
 
 class Block(nn.Module):
@@ -203,6 +227,7 @@ class Block(nn.Module):
         rel_pos_zero_init: bool = True,
         window_size: int = 0,
         input_size: Optional[Tuple[int, int]] = None,
+        mlp_transform = False
     ) -> None:
         """
         Args:
@@ -228,10 +253,11 @@ class Block(nn.Module):
             use_rel_pos=use_rel_pos,
             rel_pos_zero_init=rel_pos_zero_init,
             input_size=input_size if window_size == 0 else (window_size, window_size),
+            mlp_transform = mlp_transform
         )
 
         self.norm2 = norm_layer(dim)
-        self.mlp = MLPBlock(embedding_dim=dim, mlp_dim=int(dim * mlp_ratio), act=act_layer)
+        self.mlp = MLPBlock(embedding_dim=dim, mlp_dim=int(dim * mlp_ratio), act=act_layer, mlp_transform=mlp_transform)
 
         self.window_size = window_size
 
@@ -243,15 +269,16 @@ class Block(nn.Module):
             H, W = x.shape[1], x.shape[2]
             x, pad_hw = window_partition(x, self.window_size)
 
-        x = self.attn(x)
+        x, reg_loss1 = self.attn(x)
         # Reverse window partition
         if self.window_size > 0:
             x = window_unpartition(x, self.window_size, pad_hw, (H, W))
 
         x = shortcut + x
-        x = x + self.mlp(self.norm2(x))
+        mlp_out, reg_loss2 = self.mlp(self.norm2(x))
+        x = x + mlp_out
 
-        return x
+        return x, (reg_loss1 + reg_loss2)
 
 
 class Attention(nn.Module):
@@ -265,6 +292,7 @@ class Attention(nn.Module):
         use_rel_pos: bool = False,
         rel_pos_zero_init: bool = True,
         input_size: Optional[Tuple[int, int]] = None,
+        mlp_transform = False
     ) -> None:
         """
         Args:
@@ -281,8 +309,8 @@ class Attention(nn.Module):
         head_dim = dim // num_heads
         self.scale = head_dim**-0.5
 
-        self.qkv = SVDLinear(dim, dim * 3, bias=qkv_bias)
-        self.proj = SVDLinear(dim, dim)
+        self.qkv = SVDLinear(dim, dim * 3, bias=qkv_bias, mlp_transform=mlp_transform)
+        self.proj = SVDLinear(dim, dim, mlp_transform=mlp_transform)
 
         self.use_rel_pos = use_rel_pos
         if self.use_rel_pos:
@@ -296,7 +324,8 @@ class Attention(nn.Module):
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         B, HW, _ = x.shape
         # qkv with shape (3, B, nHead, H * W, C)
-        qkv = self.qkv(x).reshape(B, HW, 3, self.num_heads, -1).permute(2, 0, 3, 1, 4)
+        qkv, reg_loss1 = self.qkv(x)
+        qkv = qkv.reshape(B, HW, 3, self.num_heads, -1).permute(2, 0, 3, 1, 4)
         # q, k, v with shape (B * nHead, H * W, C)
         q, k, v = qkv.reshape(3, B * self.num_heads, HW, -1).unbind(0)
 
@@ -307,9 +336,9 @@ class Attention(nn.Module):
 
         attn = attn.softmax(dim=-1)
         x = (attn @ v).view(B, self.num_heads, HW, -1).permute(0, 2, 1, 3).reshape(B, HW, -1)
-        x = self.proj(x)
+        x, reg_loss2 = self.proj(x)
 
-        return x
+        return x, (reg_loss2 + reg_loss1)
 
 
 def window_partition(x: torch.Tensor, window_size: int) -> Tuple[torch.Tensor, Tuple[int, int]]:

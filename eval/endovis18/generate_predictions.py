@@ -79,14 +79,14 @@ def main():
         os.makedirs(os.path.join(args.save_path,"rescaled_gt"),exist_ok=True)
 
     #load model
-    model = Prompt_Adapted_SAM(config=model_config, label_text_dict=label_dict, device=args.device, training_strategy='biastuning')
+    model = Prompt_Adapted_SAM(config=model_config, label_text_dict=label_dict, device=args.device, training_strategy='svdtuning')
     if args.pretrained_path:
-        model.load_state_dict(torch.load(args.pretrained_path, map_location=args.device), strict=False)
+        model.load_state_dict(torch.load(args.pretrained_path, map_location=args.device), strict=True)
     model = model.to(args.device)
     model = model.eval()
 
     #load data transform
-    data_transform = Cholec_8k_Transform(config=data_config)
+    data_transform = ENDOVIS_18_Transform(config=data_config)
 
     #dice
     dices = []

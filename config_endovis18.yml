@@ -16,3 +16,4 @@ data:
   label_list: [1,2,3,4,5,6,7,8,9,10]
   label_names: ['background tissue', 'surgical instrument', 'kidney parenchyma', 'covered kidney', 'thread', 'clamps', 'suturing needle', 'suction instrument', 'small intestine','ultrasound probe']
   volume_channel: 2
+  negative_to_positive_ratio: -1

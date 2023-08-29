@@ -10,7 +10,7 @@ from torch import Tensor, nn
 import math
 from typing import Tuple, Type
 
-from .common import MLPBlock
+from .common import MLPBlock2
 
 
 class TwoWayTransformer(nn.Module):
@@ -139,7 +139,7 @@ class TwoWayAttentionBlock(nn.Module):
         )
         self.norm2 = nn.LayerNorm(embedding_dim)
 
-        self.mlp = MLPBlock(embedding_dim, mlp_dim, activation)
+        self.mlp = MLPBlock2(embedding_dim, mlp_dim, activation)
         self.norm3 = nn.LayerNorm(embedding_dim)
 
         self.norm4 = nn.LayerNorm(embedding_dim)

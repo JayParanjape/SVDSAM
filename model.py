@@ -37,7 +37,7 @@ class Prompt_Adapted_SAM(nn.Module):
 
         print(self.prompt_config)
         #define pretrained clip and sam models
-        self.sam_encoder = ImageEncoderViT(img_size=self.img_size,prompt_config=self.prompt_config)
+        self.sam_encoder = ImageEncoderViT(img_size=self.img_size,prompt_config=self.prompt_config, mlp_transform=config['mlp_transform'])
         self.clip_model, _  = clip.load("ViT-B/32", device=device)
 
         #define the components of sam
@@ -116,7 +116,7 @@ class Prompt_Adapted_SAM(nn.Module):
                         prompt_text.append(self.text_prompt_embeddings[-1])
                 prompt_text = torch.stack(prompt_text)
         
-        image_embeddings = self.sam_encoder(x_img)
+        image_embeddings, reg_loss = self.sam_encoder(x_img)
         if self.use_fdn:
             image_embeddings = self.FDN_branch(image_embeddings, x_img)
 
@@ -126,7 +126,6 @@ class Prompt_Adapted_SAM(nn.Module):
             # text_features = text_features.unsqueeze(1)
         # print(text_features.shape)
 
-        
 
         sparse_embeddings, dense_embeddings = self.prompt_encoder(
                 points=None,
@@ -162,12 +161,12 @@ class Prompt_Adapted_SAM(nn.Module):
                 use_gsam = False
             )
         high_res_masks = self.postprocess_masks(low_res_masks, (self.img_size,self.img_size), (self.img_size,self.img_size))
-        return high_res_masks
+        return high_res_masks, reg_loss
 
     def get_image_embeddings(self, x_img):
         with torch.no_grad():
             B, C, H, W = x_img.shape
-            image_embeddings = self.sam_encoder(x_img)
+            image_embeddings,_ = self.sam_encoder(x_img)
             if self.use_fdn:
                 image_embeddings = self.FDN_branch(image_embeddings, x_img)
             return image_embeddings

@@ -16,14 +16,37 @@ class MLPBlock(nn.Module):
         embedding_dim: int,
         mlp_dim: int,
         act: Type[nn.Module] = nn.GELU,
+        mlp_transform=False
     ) -> None:
         super().__init__()
-        self.lin1 = SVDLinear(embedding_dim, mlp_dim)
-        self.lin2 = SVDLinear(mlp_dim, embedding_dim)
+        self.lin1 = SVDLinear(embedding_dim, mlp_dim, mlp_transform=mlp_transform)
+        self.lin2 = SVDLinear(mlp_dim, embedding_dim, mlp_transform=mlp_transform)
+        self.act = act()
+
+    def forward(self, x: torch.Tensor, output_loss=True) -> torch.Tensor:
+        out, reg_loss1 = self.lin1(x)
+        out, reg_loss2 = self.lin2(self.act(out))
+        if output_loss:
+            return out, (reg_loss1+reg_loss2)
+        else:
+            return out 
+
+class MLPBlock2(nn.Module):
+    def __init__(
+        self,
+        embedding_dim: int,
+        mlp_dim: int,
+        act: Type[nn.Module] = nn.GELU,
+    ) -> None:
+        super().__init__()
+        self.lin1 = nn.Linear(embedding_dim, mlp_dim)
+        self.lin2 = nn.Linear(mlp_dim, embedding_dim)
         self.act = act()
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
-        return self.lin2(self.act(self.lin1(x)))
+        out = self.lin1(x)
+        out = self.lin2(self.act(out))
+        return out 
 
 
 # From https://github.com/facebookresearch/detectron2/blob/main/detectron2/layers/batch_norm.py # noqa

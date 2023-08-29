@@ -3,21 +3,21 @@ declare -a StringArray=("background tissue" "surgical instrument" "kidney parenc
 for label in "${StringArray[@]}"; do
     echo "${label}"
 
-    python generate_predictions.py --data_folder "/media/ubuntu/New Volume/jay/endovis18/seq_1-20230624T000458Z-001/seq_1/left_frames" --data_config config_endovis18_test.yml  --model_config model_svdtuning.yml --save_path "./tmp_ev18_controlledneg/seq1/${label}" --gt_path "/media/ubuntu/New Volume/jay/endovis18/seq_1-20230624T000458Z-001/seq_1/labels" --labels_of_interest "${label}" --pretrained_path "tmp_ev18_controlledneg.pth"
+    python generate_predictions.py --data_folder "/media/ubuntu/New Volume/jay/endovis18/seq_1-20230624T000458Z-001/seq_1/left_frames" --data_config config_endovis18_test.yml  --model_config model_svdtuning.yml --save_path "./svd_shiftscale_ev18_tal_focal075_8e-4_reg001_mlp/seq1/${label}" --gt_path "/media/ubuntu/New Volume/jay/endovis18/seq_1-20230624T000458Z-001/seq_1/labels" --labels_of_interest "${label}" --pretrained_path "svd_shiftscale_ev18_tal_focal075_8e-4_reg001_mlp.pth"
 
     echo "......................."
 
-    python generate_predictions.py --data_folder "/media/ubuntu/New Volume/jay/endovis18/seq_2-20230624T000507Z-001/seq_2/left_frames" --data_config config_endovis18_test.yml  --model_config model_svdtuning.yml --save_path "./tmp_ev18_controlledneg/seq2/${label}" --gt_path "/media/ubuntu/New Volume/jay/endovis18/seq_2-20230624T000507Z-001/seq_2/labels" --labels_of_interest "${label}" --pretrained_path "tmp_ev18_controlledneg.pth"
-
-
-    echo "......................."
-
-    python generate_predictions.py --data_folder "/media/ubuntu/New Volume/jay/endovis18/seq_3-20230624T000508Z-001/seq_3/left_frames" --data_config config_endovis18_test.yml  --model_config model_svdtuning.yml --save_path "./tmp_ev18_controlledneg/seq3/${label}" --gt_path "/media/ubuntu/New Volume/jay/endovis18/seq_3-20230624T000508Z-001/seq_3/labels" --labels_of_interest "${label}" --pretrained_path "tmp_ev18_controlledneg.pth"
+    python generate_predictions.py --data_folder "/media/ubuntu/New Volume/jay/endovis18/seq_2-20230624T000507Z-001/seq_2/left_frames" --data_config config_endovis18_test.yml  --model_config model_svdtuning.yml --save_path "./svd_shiftscale_ev18_tal_focal075_8e-4_reg001_mlp/seq2/${label}" --gt_path "/media/ubuntu/New Volume/jay/endovis18/seq_2-20230624T000507Z-001/seq_2/labels" --labels_of_interest "${label}" --pretrained_path "svd_shiftscale_ev18_tal_focal075_8e-4_reg001_mlp.pth"
 
 
     echo "......................."
 
-    python generate_predictions.py --data_folder "/media/ubuntu/New Volume/jay/endovis18/seq_4-20230624T000509Z-001/seq_4/left_frames" --data_config config_endovis18_test.yml  --model_config model_svdtuning.yml --save_path "./tmp_ev18_controlledneg/seq4/${label}" --gt_path "/media/ubuntu/New Volume/jay/endovis18/seq_4-20230624T000509Z-001/seq_4/labels" --labels_of_interest "${label}" --pretrained_path "tmp_ev18_controlledneg.pth"
+    python generate_predictions.py --data_folder "/media/ubuntu/New Volume/jay/endovis18/seq_3-20230624T000508Z-001/seq_3/left_frames" --data_config config_endovis18_test.yml  --model_config model_svdtuning.yml --save_path "./svd_shiftscale_ev18_tal_focal075_8e-4_reg001_mlp/seq3/${label}" --gt_path "/media/ubuntu/New Volume/jay/endovis18/seq_3-20230624T000508Z-001/seq_3/labels" --labels_of_interest "${label}" --pretrained_path "svd_shiftscale_ev18_tal_focal075_8e-4_reg001_mlp.pth"
+
+
+    echo "......................."
+
+    python generate_predictions.py --data_folder "/media/ubuntu/New Volume/jay/endovis18/seq_4-20230624T000509Z-001/seq_4/left_frames" --data_config config_endovis18_test.yml  --model_config model_svdtuning.yml --save_path "./svd_shiftscale_ev18_tal_focal075_8e-4_reg001_mlp/seq4/${label}" --gt_path "/media/ubuntu/New Volume/jay/endovis18/seq_4-20230624T000509Z-001/seq_4/labels" --labels_of_interest "${label}" --pretrained_path "svd_shiftscale_ev18_tal_focal075_8e-4_reg001_mlp.pth"
 
 
     echo "......................."

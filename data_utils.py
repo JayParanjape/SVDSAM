@@ -582,7 +582,7 @@ class Cholec_Ins_Dataset(Dataset):
     def one_time_generate_pos_neg_list_dicts(self, prefix):
         make_positive_negative_files(self.config, self.root_path, self.label_dict, self.img_path_list, self.label_path_list, self.label_list, name_prefix=prefix)
 
-    def generate_examples(self, pos2neg_ratio=2):
+    def generate_examples(self, neg2pos_ratio=2):
         self.final_img_path_list = []
         self.final_img_names = []
         self.final_label_path_list = []
@@ -595,7 +595,7 @@ class Cholec_Ins_Dataset(Dataset):
                 self.final_label_list.append(c)
             # print(c, len(self.pos_neg_dict[c]['pos_img']), len(self.pos_neg_dict[c]['neg_img']))
             try:
-                selected_neg_samples = random.sample(self.pos_neg_dict[c]['neg_img'], pos2neg_ratio*len(self.pos_neg_dict[c]['pos_img']))
+                selected_neg_samples = random.sample(self.pos_neg_dict[c]['neg_img'], neg2pos_ratio*len(self.pos_neg_dict[c]['pos_img']))
             except:
                 selected_neg_samples = self.pos_neg_dict[c]['neg_img']
             self.final_img_path_list = self.final_img_path_list + selected_neg_samples
@@ -807,16 +807,17 @@ class Endovis_18(Dataset):
         self.populate_lists()
 
         #get positive negative lists dictionary
-        try:
-            if is_train:
-                fp = open(os.path.join(self.root_path,'train_pos_neg_dict.json'))
-            else:
-                fp = open(os.path.join(self.root_path,'val_pos_neg_dict.json'))
+        if config['data']['negative_to_positive_ratio']>0:
+            try:
+                if is_train:
+                    fp = open(os.path.join(self.root_path,'train_pos_neg_dict.json'))
+                else:
+                    fp = open(os.path.join(self.root_path,'val_pos_neg_dict.json'))
 
-            self.pos_neg_dict = json.load(fp)
-        except:
-            print("Passing because pos neg json not found")
-            pass
+                self.pos_neg_dict = json.load(fp)
+            except:
+                print("Passing because pos neg json not found")
+                pass
 
         if shuffle_list:
             p = [x for x in range(len(self.img_path_list))]
@@ -862,7 +863,7 @@ class Endovis_18(Dataset):
     def one_time_generate_pos_neg_list_dicts(self, prefix):
         make_positive_negative_files(self.config, self.root_path, self.label_dict, self.img_path_list, self.label_path_list, self.label_list, name_prefix=prefix, rgb_gt=True)
 
-    def generate_examples(self, pos2neg_ratio=2):
+    def generate_examples(self, neg2pos_ratio=2):
         self.final_img_path_list = []
         self.final_img_names = []
         self.final_label_path_list = []
@@ -875,7 +876,7 @@ class Endovis_18(Dataset):
                 self.final_label_list.append(c)
             # print(c, len(self.pos_neg_dict[c]['pos_img']), len(self.pos_neg_dict[c]['neg_img']))
             try:
-                selected_neg_samples = random.sample(self.pos_neg_dict[c]['neg_img'], pos2neg_ratio*len(self.pos_neg_dict[c]['pos_img']))
+                selected_neg_samples = random.sample(self.pos_neg_dict[c]['neg_img'], neg2pos_ratio*len(self.pos_neg_dict[c]['pos_img']))
             except:
                 selected_neg_samples = self.pos_neg_dict[c]['neg_img']
             self.final_img_path_list = self.final_img_path_list + selected_neg_samples

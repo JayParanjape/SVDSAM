@@ -102,7 +102,7 @@ def train(model, tr_dataset, val_dataset, criterion, optimizer, sav_path='./chec
 
     return model
 
-def train_dl(model, datasets, dataset_sizes, criterion, optimizer, scheduler, sav_path='./checkpoints/temp.pth', num_epochs=25, bs=32, device='cuda:0', retain_graph=False):
+def train_dl(model, datasets, dataset_sizes, criterion, optimizer, scheduler, sav_path='./checkpoints/temp.pth', num_epochs=25, bs=32, device='cuda:0', retain_graph=False, neg2pos_ratio=-1, reg_multiplier = 0.01):
     model = model.to(device)
     best_dice = 0
     best_loss=10000
@@ -118,7 +118,8 @@ def train_dl(model, datasets, dataset_sizes, criterion, optimizer, scheduler, sa
         for phase in ['train', 'val']:
             if phase == 'train':
                 model.train()  # Set model to training mode
-                datasets[phase].generate_examples()
+                if neg2pos_ratio > 0:
+                    datasets[phase].generate_examples(neg2pos_ratio)
             else:
                 model.eval()   # Set model to evaluate mode
 
@@ -148,7 +149,7 @@ def train_dl(model, datasets, dataset_sizes, criterion, optimizer, scheduler, sa
                 # forward
                 # track history if only in train
                 with torch.set_grad_enabled(phase == 'train'):
-                    outputs = model(inputs, text)
+                    outputs, reg_loss = model(inputs, text)
                     # print(outputs)
                     # print(outputs.shape)
                     # print(outputs)
@@ -160,6 +161,8 @@ def train_dl(model, datasets, dataset_sizes, criterion, optimizer, scheduler, sa
                         except:
                             seg_loss += c(outputs, labels.float())
                     loss += seg_loss
+                    loss += (reg_loss*reg_multiplier)
+                    # print("Reg loss: ",reg_loss)
                     
                     # backward + optimize only if in training phase
                     if phase == 'train':

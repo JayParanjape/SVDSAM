@@ -62,7 +62,7 @@ def focal_loss(y_pred, y_true, alpha_def=0.75, gamma=3):
     loss = ce_loss * ((1 - p_t) ** gamma)
     alpha_t = alpha * y_true + (1 - alpha) * (1 - y_true)
     loss = alpha_t * loss
-    loss = torch.mean(loss, dim=(-1,-2))
+    loss = torch.sum(loss, dim=(-1,-2))
     return loss.mean()
 
 def multiclass_focal_loss(y_pred, y_true, alpha = 0.75, gamma=3):

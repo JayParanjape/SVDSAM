@@ -178,8 +178,7 @@ class ImageEncoderViT(nn.Module):
         
         resize_dim = self.img_size // self.patch_size[0]
         x = x.view(B, resize_dim, resize_dim, -1)
-        x , loss= self.neck(x.permute(0, 3, 1, 2))
-        reg_loss += loss
+        x = self.neck(x.permute(0, 3, 1, 2))
 
         return x, reg_loss
 
@@ -209,7 +208,7 @@ class Neck(nn.Module):
         out = self.ln1(out)
         out, reg_loss2 = self.conv2(out)
         out = self.ln2(out)
-        return out, (reg_loss1+reg_loss2)
+        return out
 
 
 class Block(nn.Module):

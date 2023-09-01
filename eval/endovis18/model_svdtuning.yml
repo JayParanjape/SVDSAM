@@ -6,7 +6,7 @@ img_type: 'image'
 arch: "Prompt Adapted SAM"
 use_fdn: False
 decoder_training: 'none'
-mlp_transform: True
+mlp_transform: False
 
 prompts:
   USE_TEXT_PROMPT: True

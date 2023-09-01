@@ -80,8 +80,26 @@ def main():
 
     #load model
     model = Prompt_Adapted_SAM(config=model_config, label_text_dict=label_dict, device=args.device, training_strategy='svdtuning')
-    if args.pretrained_path:
-        model.load_state_dict(torch.load(args.pretrained_path, map_location=args.device), strict=True)
+    
+    #legacy model support
+    sdict = torch.load(args.pretrained_path, map_location=args.device)
+    for key in list(sdict.keys()):
+        if 'sam_encoder.neck' in key:
+            if '0' in key:
+                new_key = key.replace('0','conv1')
+            if '1' in key:
+                new_key = key.replace('1','ln1')
+            if '2' in key:
+                new_key = key.replace('2','conv2')
+            if '3' in key:
+                new_key = key.replace('3','ln2')
+            sdict[new_key] = sdict[key]
+            _ = sdict.pop(key)
+        if 'mask_decoder' in key:
+            if 'trainable' in key:
+                _ = sdict.pop(key)   
+    
+    model.load_state_dict(sdict,strict=True)
     model = model.to(args.device)
     model = model.eval()
 

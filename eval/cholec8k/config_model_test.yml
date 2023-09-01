@@ -5,7 +5,8 @@ sam:
 img_type: 'image'
 arch: "Prompt Adapted SAM"
 use_fdn: False
-decoder_training: 'full'
+decoder_training: 'none'
+mlp_transform: False
 
 prompts:
   USE_TEXT_PROMPT: True
@@ -23,3 +24,4 @@ training:
   schedule_step_factor: 0.5
   weight_decay: 1e-2
   loss: 'focal+dice'
+  reg_multiplier: 0

@@ -17,11 +17,11 @@ prompts:
 
 training:
   optimizer: 'adamw'
-  lr: 8e-4
+  lr: 1e-4
   batch_size: 32
   num_epochs: 1000
   schedule_step: 2000
   schedule_step_factor: 0.5
   weight_decay: 1e-2
   loss: 'focal'
-  reg_multiplier: 0.01
+  reg_multiplier: 0

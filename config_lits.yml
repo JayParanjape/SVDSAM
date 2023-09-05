@@ -18,3 +18,4 @@ data:
   volume_channel: 2
   sampling_deviation: 5
   samples_per_slice: 2
+  negative_to_positive_ratio: -1

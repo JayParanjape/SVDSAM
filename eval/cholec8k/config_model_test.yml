@@ -6,7 +6,7 @@ img_type: 'image'
 arch: "Prompt Adapted SAM"
 use_fdn: False
 decoder_training: 'none'
-mlp_transform: False
+mlp_transform: True
 
 prompts:
   USE_TEXT_PROMPT: True
@@ -14,6 +14,7 @@ prompts:
   LOCATION: 'prepend'
   DROPOUT: 0
   NUM_TOKENS: 5
+  USE_SLICE_NUM: False
 
 training:
   optimizer: 'adamw'

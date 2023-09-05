@@ -64,11 +64,18 @@ class Prompt_Adapted_SAM(nn.Module):
         
         #define text prompt layers if they are to be used
         if self.prompt_config['USE_TEXT_PROMPT']:
-            self.Text_Embedding_Affine = nn.Sequential(
-                nn.Linear(512, 256),
-                nn.ReLU(),
-                nn.BatchNorm1d(256)
-            )
+            if self.prompt_config['USE_SLICE_NUM']:
+                self.Text_Embedding_Affine = nn.Sequential(
+                    nn.Linear(512, 128),
+                    nn.ReLU(),
+                    nn.BatchNorm1d(128)
+                )
+            else:
+                self.Text_Embedding_Affine = nn.Sequential(
+                    nn.Linear(512, 256),
+                    nn.ReLU(),
+                    nn.BatchNorm1d(256)
+                )
             if self.training_strategy=='prompttuning':
                 self.text_prompt_dropout = nn.Dropout(self.prompt_config['DROPOUT'])
                 self.text_prompt_embeddings = nn.Parameter(torch.zeros(self.num_classes+1, prompt_embed_dim))
@@ -77,6 +84,10 @@ class Prompt_Adapted_SAM(nn.Module):
                 self.label_dict = self.label_dict.update({
                                         'other': self.num_classes
                                     })
+
+        #define the slice number embedding
+        if self.prompt_config['USE_SLICE_NUM']:
+            self.slice_embedding = nn.Embedding(1024,128)
 
         #initialize sam with pretrained weights
         sam_ckpt = '/home/ubuntu/Desktop/Domain_Adaptation_Project/repos/segment-anything/checkpoints/sam_vit_b_01ec64.pth'
@@ -102,7 +113,7 @@ class Prompt_Adapted_SAM(nn.Module):
         self.prompt_encoder.load_state_dict(sam_state_dict, strict=False)
         self.mask_decoder.load_state_dict(sam_state_dict,strict=False)
 
-    def forward(self, x_img, x_text):
+    def forward(self, x_img, x_text, slice_num):
         B, C, H, W = x_img.shape
         x_text = list(x_text)
         
@@ -142,12 +153,24 @@ class Prompt_Adapted_SAM(nn.Module):
         except:
             print(text_features.shape)
             1/0
+
+        if self.prompt_config['USE_SLICE_NUM']:
+            # print("slice num: ", slice_num)
+            slice_features = self.slice_embedding(torch.LongTensor(slice_num).to(self.device))
+            slice_features = slice_features.unsqueeze(1)
         if self.prompt_config['USE_TEXT_PROMPT'] and self.training_strategy=='prompttuning':
             text_features_affine = text_features_affine + prompt_text
         text_features_affine = text_features_affine.unsqueeze(1)
         sparse_embeddings = sparse_embeddings.to(self.device).repeat(B,1,1)
-        sparse_embeddings = torch.cat(
-            [sparse_embeddings,text_features_affine], dim=1)
+        if self.prompt_config['USE_SLICE_NUM']:
+            # print(sparse_embeddings.shape)
+            # print(text_features_affine.shape)
+            # print(slice_features.shape)
+            sparse_embeddings = torch.cat(
+                [sparse_embeddings, torch.cat([text_features_affine, slice_features], dim=-1)], dim=1)
+        else:
+            sparse_embeddings = torch.cat(
+                [sparse_embeddings, text_features_affine], dim=1)    
         # print(sparse_embeddings.shape)
         # sparse_embeddings = sparse_embeddings.squeeze()
         # sparse_embeddings = sparse_embeddings.unsqueeze(1)

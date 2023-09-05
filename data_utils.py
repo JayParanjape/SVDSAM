@@ -131,6 +131,12 @@ class Generic_Dataset_3d(Dataset):
         self.folder_start = folder_start
         self.folder_end = folder_end
         self.config = config
+        self.final_img_path_list = []
+        self.final_label_path_list = []
+        self.final_label_names_list = []
+        self.final_position_list = []
+        #can be one of 2d_gaussian, 2d, 3d
+        self.mode = "2d_gaussian"
 
         self.populate_lists()
         if shuffle_list:
@@ -178,41 +184,51 @@ class Generic_Dataset_3d(Dataset):
         if self.config['data']['volume_channel']==2:
             gold = gold.permute(2,0,1)
 
-        # use gaussian with mean as the slice with biggest mask and a big variance
-        mu, sigma = (torch.argmax(torch.sum(gold, dim=(1,2)))), self.config['data']['sampling_deviation'] # mean and standard deviation
-        s = (np.random.normal(mu, sigma, self.config['data']['samples_per_slice'])).astype(int)
-        s = [max(i,0) for i in s]
-        s = [min(i,gold.shape[0]-2) for i in s]
-        try:
-            gold = gold[s]
-            gold = self.transform(gold, is_mask=True)
-        except:
+        if self.mode == '2d_gaussian':
+            # use gaussian with mean as the slice with biggest mask and a big variance
+            mu, sigma = (torch.argmax(torch.sum(gold, dim=(1,2)))), self.config['data']['sampling_deviation'] # mean and standard deviation
             s = (np.random.normal(mu, sigma, self.config['data']['samples_per_slice'])).astype(int)
             s = [max(i,0) for i in s]
             s = [min(i,gold.shape[0]-2) for i in s]
+            try:
+                gold = gold[s]
+            except:
+                s = (np.random.normal(mu, sigma, self.config['data']['samples_per_slice'])).astype(int)
+                s = [max(i,0) for i in s]
+                s = [min(i,gold.shape[0]-2) for i in s]
+                gold = gold[s]
+
+            #image loading and conversion to rgb by replicating channels
+            if self.config['data']['volume_channel']==2: #data originally is HXWXC
+                im = (torch.Tensor(np.asanyarray(im.dataobj)).permute(2,0,1).unsqueeze(1).repeat(1,3,1,1))[s]
+            else: #data originally is CXHXW
+                im = (torch.Tensor(np.asanyarray(im.dataobj)).unsqueeze(1).repeat(1,3,1,1))[s]
+        
+        elif self.mode == '2d':
+            #image loading and conversion to rgb by replicating channels
+            if self.config['data']['volume_channel']==2: #data originally is HXWXC
+                im = (torch.Tensor(np.asanyarray(im.dataobj)).permute(2,0,1).unsqueeze(1).repeat(1,3,1,1))
+            else: #data originally is CXHXW
+                im = (torch.Tensor(np.asanyarray(im.dataobj)).unsqueeze(1).repeat(1,3,1,1))
+            num_slices = im.shape[0]
+            s = (np.random.uniform(0,num_slices, self.config['data']['samples_per_slice'])).astype(int)
             gold = gold[s]
-            gold = self.transform(gold, is_mask=True)
+            im = im[s]
+        
+        elif self.mode =='3d':
+            #image loading and conversion to rgb by replicating channels
+            s = [0]
+            if self.config['data']['volume_channel']==2: #data originally is HXWXC
+                im = (torch.Tensor(np.asanyarray(im.dataobj)).permute(2,0,1).unsqueeze(1).repeat(1,3,1,1))
+            else: #data originally is CXHXW
+                im = (torch.Tensor(np.asanyarray(im.dataobj)).unsqueeze(1).repeat(1,3,1,1))
 
-
-        # plt.imshow(gold, cmap='gray')
-        # plt.show()
-        #convert all grayscale pixels due to resizing back to 0, 1
+        gold = self.transform(gold, is_mask=True)
         gold = (gold>=0.5)+0
-        # plt.imshow(gold, cmap='gray')
-        # plt.show()
-        #only consider some k slices at random
-        
-        
-        #image loading and conversion to rgb by replicating channels
-        if self.config['data']['volume_channel']==2: #data originally is HXWXC
-            im = (torch.Tensor(np.asanyarray(im.dataobj)).permute(2,0,1).unsqueeze(1).repeat(1,3,1,1))[s]
-        else: #data originally is CXHXW
-            im = (torch.Tensor(np.asanyarray(im.dataobj)).unsqueeze(1).repeat(1,3,1,1))[s]
         im = self.transform(im)
         
         
-        return im, gold, label_segmask_no, label_text
-
+        return im, gold, label_segmask_no, label_text, s
 
 class IDRID_Transform():
     def __init__(self, config):

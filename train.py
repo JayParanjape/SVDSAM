@@ -20,17 +20,18 @@ def train(model, tr_dataset, val_dataset, criterion, optimizer, sav_path='./chec
         print(f'Epoch {epoch}/{num_epochs - 1}')
         print('-' * 10)
         bs_count=0
-        inputs_li, labels_li, text_ids_li, text_li = [], [], [], []
+        inputs_li, labels_li, text_ids_li, text_li, slice_num_li = [], [], [], [], []
         running_loss = 0
         running_dice = 0
         count = 0
         #run training
         # print("eere: ",len(tr_dataset))
         for i in range(len(tr_dataset)):
-            inputs, labels,_, text = tr_dataset[i]
+            inputs, labels,_, text, slice_nums = tr_dataset[i]
             inputs_li.append(inputs)
             labels_li.append(labels)
             text_li = text_li + [text]*(inputs.shape[0])
+            slice_num_li = slice_num_li + slice_nums
             bs_count += 1
             if (bs_count%bs==0) or (i==len(tr_dataset)-1):
                 #start training
@@ -41,7 +42,7 @@ def train(model, tr_dataset, val_dataset, criterion, optimizer, sav_path='./chec
                 labels = labels.to(device)
                 with torch.set_grad_enabled(True):
                     optimizer.zero_grad()
-                    outputs = model(inputs, text_li)
+                    outputs, reg_loss = model(inputs, text_li, slice_num_li)
                     seg_loss=0
                     for c in criterion:
                         seg_loss += c(outputs, labels.float())
@@ -57,6 +58,7 @@ def train(model, tr_dataset, val_dataset, criterion, optimizer, sav_path='./chec
                 inputs_li = []
                 labels_li = []
                 text_li = []
+                slice_num_li = []
         epoch_dice = running_dice / count
         
         print("Training loss: ", running_loss/(1+(len(tr_dataset)//bs)))
@@ -67,10 +69,11 @@ def train(model, tr_dataset, val_dataset, criterion, optimizer, sav_path='./chec
             running_dice = 0
             count=0
             for i in range(len(val_dataset)):
-                inputs, labels,_, text = val_dataset[i]
+                inputs, labels,_, text, slice_nums = val_dataset[i]
                 inputs_li.append(inputs)
                 labels_li.append(labels)
                 text_li = text_li + [text]*(inputs.shape[0])
+                slice_num_li = slice_num_li + slice_nums
                 bs_count += 1
                 if bs_count%bs==0:
                     #start training
@@ -80,7 +83,7 @@ def train(model, tr_dataset, val_dataset, criterion, optimizer, sav_path='./chec
                     inputs = inputs.to(device)
                     labels = labels.to(device)
                     with torch.set_grad_enabled(False):
-                        outputs = model(inputs, text_li)
+                        outputs, reg_loss = model(inputs, text_li, slice_num_li)
                         preds = (outputs>=0.5)
                         ri, ru = running_stats(labels,preds)
                         running_dice += dice_collated(ri,ru)
@@ -89,6 +92,7 @@ def train(model, tr_dataset, val_dataset, criterion, optimizer, sav_path='./chec
                     inputs_li = []
                     labels_li = []
                     text_li = []
+                    slice_num_li = []
             # epoch_dice = running_dice / (len(val_dataset))
             epoch_dice = running_dice / count
 

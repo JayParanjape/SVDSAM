@@ -160,6 +160,10 @@ def main_train(data_config, model_config, pretrained_path, save_path, training_s
     #change the img size in model config according to data config
     model_config['sam']['img_size'] = data_config['data_transforms']['img_size']
     model_config['sam']['num_classes'] = len(data_config['data']['label_list'])
+    if training_strategy=='lora':
+        model_config['use_lora'] = True
+    else:
+        model_config['use_lora'] = False
 
     if model_config['arch']=='Prompt Adapted SAM':
         model = Prompt_Adapted_SAM(model_config, label_dict, device, training_strategy=training_strategy)
@@ -184,6 +188,9 @@ def main_train(data_config, model_config, pretrained_path, save_path, training_s
             if 'trainable' in name.lower():
                 p.requires_grad = True
             if ('bias' in name.lower()) and ('clip' not in name.lower()):
+                p.requires_grad = True
+        elif training_strategy=='lora':
+            if 'trainable_lora' in name.lower():
                 p.requires_grad = True
 
         if model_config['prompts']['USE_TEXT_PROMPT']:
@@ -245,11 +252,11 @@ def main_train(data_config, model_config, pretrained_path, save_path, training_s
     elif data_config['data']['name']=='CHOLEC 8K':
         model = train_dl(model, dataset_dict, dataset_sizes, criterion, optimizer, exp_lr_scheduler, save_path, num_epochs=training_params['num_epochs'], bs=training_params['batch_size'], device=device, retain_graph=retain_graph, neg2pos_ratio=data_config['data']['negative_to_positive_ratio'], reg_multiplier=model_config['training']['reg_multiplier'])
     elif data_config['data']['name']=='ULTRASOUND':
-        model = train_dl(model, dataloader_dict, dataset_sizes, criterion, optimizer, exp_lr_scheduler, save_path, num_epochs=training_params['num_epochs'], bs=training_params['batch_size'], device=device, retain_graph=retain_graph, neg2pos_ratio=data_config['data']['negative_to_positive_ratio'], reg_multiplier=model_config['training']['reg_multiplier'])
+        model = train_dl(model, dataset_dict, dataset_sizes, criterion, optimizer, exp_lr_scheduler, save_path, num_epochs=training_params['num_epochs'], bs=training_params['batch_size'], device=device, retain_graph=retain_graph, neg2pos_ratio=data_config['data']['negative_to_positive_ratio'], reg_multiplier=model_config['training']['reg_multiplier'])
     elif data_config['data']['name']=='KVASIRSEG':
-        model = train_dl(model, dataloader_dict, dataset_sizes, criterion, optimizer, exp_lr_scheduler, save_path, num_epochs=training_params['num_epochs'], bs=training_params['batch_size'], device=device, retain_graph=retain_graph, neg2pos_ratio=data_config['data']['negative_to_positive_ratio'], reg_multiplier=model_config['training']['reg_multiplier'])
+        model = train_dl(model, dataset_dict, dataset_sizes, criterion, optimizer, exp_lr_scheduler, save_path, num_epochs=training_params['num_epochs'], bs=training_params['batch_size'], device=device, retain_graph=retain_graph, neg2pos_ratio=data_config['data']['negative_to_positive_ratio'], reg_multiplier=model_config['training']['reg_multiplier'])
     elif data_config['data']['name']=='CHESTXDET':
-        model = train_dl(model, dataloader_dict, dataset_sizes, criterion, optimizer, exp_lr_scheduler, save_path, num_epochs=training_params['num_epochs'], bs=training_params['batch_size'], device=device, retain_graph=retain_graph, neg2pos_ratio=data_config['data']['negative_to_positive_ratio'], reg_multiplier=model_config['training']['reg_multiplier'])
+        model = train_dl(model, dataset_dict, dataset_sizes, criterion, optimizer, exp_lr_scheduler, save_path, num_epochs=training_params['num_epochs'], bs=training_params['batch_size'], device=device, retain_graph=retain_graph, neg2pos_ratio=data_config['data']['negative_to_positive_ratio'], reg_multiplier=model_config['training']['reg_multiplier'])
 
 
 if __name__ == '__main__':

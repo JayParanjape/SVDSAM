@@ -14,6 +14,7 @@ from typing import Optional, Tuple, Type
 
 from .common import LayerNorm2d, MLPBlock
 from .svd_layers import SVDLinear, SVDConv2d
+from .lora_layers import LoRAConv2D, LoRALinear
 
 # This class and its supporting functions below lightly adapted from the ViTDet backbone available at: https://github.com/facebookresearch/detectron2/blob/main/detectron2/modeling/backbone/vit.py # noqa
 class ImageEncoderViT(nn.Module):
@@ -41,7 +42,8 @@ class ImageEncoderViT(nn.Module):
             'DROPOUT': 0.1,
             'NUM_TOKENS': 5
         },
-        mlp_transform = False
+        mlp_transform = False,
+        use_lora=False
     ) -> None:
         """
         Args:
@@ -102,11 +104,12 @@ class ImageEncoderViT(nn.Module):
                 rel_pos_zero_init=rel_pos_zero_init,
                 window_size=window_size if i not in global_attn_indexes else 0,
                 input_size=(img_size // patch_size, img_size // patch_size),
-                mlp_transform=mlp_transform
+                mlp_transform=mlp_transform,
+                use_lora = use_lora
             )
             self.blocks.append(block)
 
-        self.neck = Neck(embed_dim, out_chans, mlp_transform = mlp_transform)
+        self.neck = Neck(embed_dim, out_chans, mlp_transform = mlp_transform, use_lora=use_lora)
         # self.neck = nn.Sequential(
         #     SVDConv2d(
         #         embed_dim,
@@ -196,11 +199,16 @@ class ImageEncoderViT(nn.Module):
 
 class Neck(nn.Module):
     """Neck which is a MLP at the end"""
-    def __init__(self, embed_dim, out_chans, mlp_transform=False):
+    def __init__(self, embed_dim, out_chans, mlp_transform=False, use_lora=False):
         super().__init__()
-        self.conv1 = SVDConv2d(embed_dim, out_chans, kernel_size=1, bias=False, mlp_transform=mlp_transform)
+        if use_lora:
+            self.conv1 = LoRAConv2D(embed_dim, out_chans, kernel_size=1, bias=False)
+            self.conv2 = LoRAConv2D(out_chans, out_chans, kernel_size=3, padding=1, bias=False)
+        else:
+            self.conv1 = SVDConv2d(embed_dim, out_chans, kernel_size=1, bias=False, mlp_transform=mlp_transform)
+            self.conv2 = SVDConv2d(out_chans, out_chans, kernel_size=3, padding=1, bias=False, mlp_transform=mlp_transform)
+        
         self.ln1 = LayerNorm2d(out_chans)
-        self.conv2 = SVDConv2d(out_chans, out_chans, kernel_size=3, padding=1, bias=False, mlp_transform=mlp_transform)
         self.ln2 = LayerNorm2d(out_chans)        
 
     def forward(self, x):
@@ -226,7 +234,8 @@ class Block(nn.Module):
         rel_pos_zero_init: bool = True,
         window_size: int = 0,
         input_size: Optional[Tuple[int, int]] = None,
-        mlp_transform = False
+        mlp_transform = False,
+        use_lora = False
     ) -> None:
         """
         Args:
@@ -252,11 +261,12 @@ class Block(nn.Module):
             use_rel_pos=use_rel_pos,
             rel_pos_zero_init=rel_pos_zero_init,
             input_size=input_size if window_size == 0 else (window_size, window_size),
-            mlp_transform = mlp_transform
+            mlp_transform = mlp_transform,
+            use_lora = use_lora
         )
 
         self.norm2 = norm_layer(dim)
-        self.mlp = MLPBlock(embedding_dim=dim, mlp_dim=int(dim * mlp_ratio), act=act_layer, mlp_transform=mlp_transform)
+        self.mlp = MLPBlock(embedding_dim=dim, mlp_dim=int(dim * mlp_ratio), act=act_layer, mlp_transform=mlp_transform, use_lora=use_lora)
 
         self.window_size = window_size
 
@@ -291,7 +301,8 @@ class Attention(nn.Module):
         use_rel_pos: bool = False,
         rel_pos_zero_init: bool = True,
         input_size: Optional[Tuple[int, int]] = None,
-        mlp_transform = False
+        mlp_transform = False,
+        use_lora=False
     ) -> None:
         """
         Args:
@@ -307,9 +318,12 @@ class Attention(nn.Module):
         self.num_heads = num_heads
         head_dim = dim // num_heads
         self.scale = head_dim**-0.5
-
-        self.qkv = SVDLinear(dim, dim * 3, bias=qkv_bias, mlp_transform=mlp_transform)
-        self.proj = SVDLinear(dim, dim, mlp_transform=mlp_transform)
+        if use_lora:
+            self.qkv = LoRALinear(dim, dim * 3, bias=qkv_bias)
+            self.proj = LoRALinear(dim, dim)
+        else:
+            self.qkv = SVDLinear(dim, dim * 3, bias=qkv_bias, mlp_transform=mlp_transform)
+            self.proj = SVDLinear(dim, dim, mlp_transform=mlp_transform)
 
         self.use_rel_pos = use_rel_pos
         if self.use_rel_pos:

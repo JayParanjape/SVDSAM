@@ -37,7 +37,7 @@ class Prompt_Adapted_SAM(nn.Module):
 
         print(self.prompt_config)
         #define pretrained clip and sam models
-        self.sam_encoder = ImageEncoderViT(img_size=self.img_size,prompt_config=self.prompt_config, mlp_transform=config['mlp_transform'])
+        self.sam_encoder = ImageEncoderViT(img_size=self.img_size,prompt_config=self.prompt_config, mlp_transform=config['mlp_transform'], use_lora=config['use_lora'])
         self.clip_model, _  = clip.load("ViT-B/32", device=device)
 
         #define the components of sam
@@ -113,7 +113,7 @@ class Prompt_Adapted_SAM(nn.Module):
         self.prompt_encoder.load_state_dict(sam_state_dict, strict=False)
         self.mask_decoder.load_state_dict(sam_state_dict,strict=False)
 
-    def forward(self, x_img, x_text, slice_num):
+    def forward(self, x_img, x_text, slice_num=0):
         B, C, H, W = x_img.shape
         x_text = list(x_text)
         

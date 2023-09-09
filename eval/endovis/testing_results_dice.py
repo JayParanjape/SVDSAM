@@ -7,7 +7,7 @@ import torch
 sys.path.append("/home/ubuntu/Desktop/Domain_Adaptation_Project/repos/biastuning/")
 from utils import *
 
-test_path = "/home/ubuntu/Desktop/Domain_Adaptation_Project/repos/biastuning/eval/endovis/samzs_results"
+test_path = "/home/ubuntu/Desktop/Domain_Adaptation_Project/repos/SVDSAM/eval/endovis/lora_ev17_tal_focal075_1e-3_results"
 
 #when not differentiating between the forceps, add mbp to the first tuple
 instruments = [('lgr','rgr'),('llnd','rlnd'),('lpf','rpf')]

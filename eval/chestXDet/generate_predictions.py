@@ -82,7 +82,9 @@ def main():
         os.makedirs(os.path.join(args.save_path,"rescaled_gt"),exist_ok=True)
 
     #load model
-    model = Prompt_Adapted_SAM(config=model_config, label_text_dict=label_dict, device=args.device, training_strategy='svdtuning')
+    # model = Prompt_Adapted_SAM(config=model_config, label_text_dict=label_dict, device=args.device, training_strategy='svdtuning')
+    model = Prompt_Adapted_SAM(config=model_config, label_text_dict=label_dict, device=args.device, training_strategy='lora')
+    
     # print(model)
     # model.load_state_dict(torch.load(args.pretrained_path, map_location=args.device), strict=False)
     # temp = torch.load(args.pretrained_path, map_location=args.device)

@@ -3,7 +3,7 @@ import yaml
 import sys
 import copy
 import os
-sys.path.append("/home/ubuntu/Desktop/Domain_Adaptation_Project/repos/biastuning/")
+sys.path.append("/home/ubuntu/Desktop/Domain_Adaptation_Project/repos/SVDSAM/")
 
 from data_utils import *
 from model import *
@@ -66,7 +66,9 @@ def main():
         os.makedirs(os.path.join(args.save_path,"rescaled_gt"),exist_ok=True)
 
     #load model
-    model = Prompt_Adapted_SAM(config=model_config, label_text_dict=label_dict, device=args.device)
+    # model = Prompt_Adapted_SAM(config=model_config, label_text_dict=label_dict, device=args.device)
+    model = Prompt_Adapted_SAM(config=model_config, label_text_dict=label_dict, device=args.device, training_strategy='lora')
+
     if args.pretrained_path:
         model.load_state_dict(torch.load(args.pretrained_path, map_location=args.device))
     model = model.to(args.device)

@@ -9,6 +9,7 @@ import torch.nn as nn
 
 from typing import Type
 from .svd_layers import SVDLinear
+from .lora_layers import LoRAConv2D, LoRALinear
 
 class MLPBlock(nn.Module):
     def __init__(
@@ -16,11 +17,16 @@ class MLPBlock(nn.Module):
         embedding_dim: int,
         mlp_dim: int,
         act: Type[nn.Module] = nn.GELU,
-        mlp_transform=False
+        mlp_transform=False,
+        use_lora = False
     ) -> None:
         super().__init__()
-        self.lin1 = SVDLinear(embedding_dim, mlp_dim, mlp_transform=mlp_transform)
-        self.lin2 = SVDLinear(mlp_dim, embedding_dim, mlp_transform=mlp_transform)
+        if use_lora:
+            self.lin1 = LoRALinear(embedding_dim, mlp_dim)
+            self.lin2 = LoRALinear(mlp_dim, embedding_dim)
+        else:
+            self.lin1 = SVDLinear(embedding_dim, mlp_dim, mlp_transform=mlp_transform)
+            self.lin2 = SVDLinear(mlp_dim, embedding_dim, mlp_transform=mlp_transform)
         self.act = act()
 
     def forward(self, x: torch.Tensor, output_loss=True) -> torch.Tensor:

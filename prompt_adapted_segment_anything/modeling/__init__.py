@@ -10,3 +10,4 @@ from .mask_decoder import MaskDecoder
 from .prompt_encoder import PromptEncoder
 from .transformer import TwoWayTransformer
 from .svd_layers import SVDLinear, SVDConv2d
+from .lora_layers import LoRAConv2D, LoRALinear

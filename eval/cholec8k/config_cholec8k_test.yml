@@ -17,4 +17,3 @@ data:
   label_names: ['Grasper', 'L Hook Electrocautery', 'Liver', 'Fat', 'Gall Bladder','Abdominal Wall','Gastrointestinal Tract','Cystic Duct','Blood','Hepatic Vein', 'Liver Ligament', 'Connective Tissue']
   # label_names: ['Abdominal Wall', 'Blood', 'Connective Tissue', 'Cystic Duct', 'Fat',  'Gall Bladder', 'Gastrointestinal Tract', Grasper', 'Hepatic Vein', 'L Hook Electrocautery', 'Liver', 'Liver Ligament']
   volume_channel: 2
-

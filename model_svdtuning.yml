@@ -11,7 +11,7 @@ mlp_transform: False
 prompts:
   USE_TEXT_PROMPT: True
   USE_IMAGE_PROMPT: False
-  USE_SLICE_NUM: True
+  USE_SLICE_NUM: False
   LOCATION: 'prepend'
   DROPOUT: 0
   NUM_TOKENS: 5

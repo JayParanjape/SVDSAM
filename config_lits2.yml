@@ -11,9 +11,9 @@ data_transforms:
   brightness: 2
   use_horizontal_flip: False
 data:
-  name: KVASIRSEG
-  root_path: '/home/ubuntu/Desktop/Domain_Adaptation_Project/data/kvasir-seg/Kvasir-SEG'
-  label_list: [1]
-  label_names: ['Polyp']
+  name: LITS2
+  root_path: '/media/ubuntu/New Volume/jay/LiTS2/archive'
+  label_list: [1,2]
+  label_names: ['Liver','Tumor']
   volume_channel: 2
   negative_to_positive_ratio: -1

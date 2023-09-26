@@ -11,7 +11,7 @@ mlp_transform: False
 prompts:
   USE_TEXT_PROMPT: True
   USE_IMAGE_PROMPT: False
-  USE_SLICE_NUM: False
+  USE_SLICE_NUM: True
   LOCATION: 'prepend'
   DROPOUT: 0
   NUM_TOKENS: 5
@@ -21,7 +21,7 @@ training:
   lr: 1e-3
   batch_size: 32
   num_epochs: 1000
-  schedule_step: 100
+  schedule_step: 1000
   schedule_step_factor: 0.5
   weight_decay: 1e-2
   loss: 'focal'

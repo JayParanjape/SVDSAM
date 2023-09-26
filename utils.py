@@ -24,7 +24,7 @@ def running_stats(y_true, y_pred, smooth = 1):
     return intersection, union
 
 def dice_collated(running_intersection, running_union, smooth =1):
-    if len(running_intersection.size())==2:
+    if len(running_intersection.size())>=2:
         dice = (torch.mean((2. * running_intersection + smooth)/(running_union + smooth),dim=1)).sum()
     else:
         dice = ((2. * running_intersection + smooth)/(running_union + smooth)).sum()

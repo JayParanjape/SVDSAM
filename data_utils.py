@@ -23,6 +23,7 @@ from data_transforms.cholec_8k_transform import Cholec_8k_Transform
 from data_transforms.ultrasound_transform import Ultrasound_Transform
 from data_transforms.kvasirSeg_transform import kvasirSeg_Transform
 from data_transforms.ChestXDet_transform import ChestXDet_Transform
+from data_transforms.lits2_transform import LiTS2_Transform
 
 def make_positive_negative_files(config, output_root, label_dict, populated_img_path_list, populated_gt_list, populated_classname_list, rgb_gt = False, name_prefix='val'):
     # generates positive and negative example files for each class
@@ -91,35 +92,40 @@ class Slice_Transforms:
         self.pixel_std = torch.Tensor([53.395, 57.12, 57.375]).view(-1,1,1).unsqueeze(0)
         self.img_size = config['data_transforms']['img_size']
         self.resize = transforms.Resize(self.img_size-1, max_size=self.img_size, antialias=True)
-        self.a_min = config['data_transforms']['a_min']
-        self.a_max = config['data_transforms']['a_max']
+        # self.a_min = config['data_transforms']['a_min']
+        # self.a_max = config['data_transforms']['a_max']
         
 
-    def __call__(self, image, is_mask=False, apply_mean_norm=True):
+    def __call__(self, image, label, apply_mean_norm=True):
         # image = torch.Tensor(image)
         b_min=0
-        if not is_mask:
-            #scale intensities to 0-255
-            b_min,b_max = 0, 255
-            image = (image - self.a_min) / (self.a_max - self.a_min)
-            image = image * (b_max - b_min) + b_min
-            image = torch.clamp(image,b_min,b_max)
+        a_min = image.min()
+        a_max = image.max()
+        # if not is_mask:
+        #scale intensities to 0-255
+        b_min,b_max = 0, 255
+        image = (image - a_min) / (a_max - a_min)
+        image = image * (b_max - b_min) + b_min
+        image = torch.clamp(image,b_min,b_max)
+        image = image.int()
 
-            #center around SAM's expected mean
-            if apply_mean_norm:
-                image = (image - self.pixel_mean)/self.pixel_std
+        #center around SAM's expected mean
+        if apply_mean_norm:
+            image = (image - self.pixel_mean)/self.pixel_std
         
         image = self.resize(image)
+        label = self.resize(label)
         #pad if necessary
         h, w = image.shape[-2:]
         padh = self.img_size - h
         padw = self.img_size - w
         image = pad(image, (0, padw, 0, padh), value=b_min)
-        return image
+        label = pad(label, (0, padw, 0, padh), value=0)
+        return image, label
 
 
 class Generic_Dataset_3d(Dataset):
-    def __init__(self, config, is_train=False, folder_start=0, folder_end=40, shuffle_list=True):
+    def __init__(self, config, is_train=False, folder_start=0, folder_end=40, shuffle_list=True, apply_norm=True, use_folder_idx=True):
         super().__init__()
         self.root_path = config['data']['root_path']
         self.img_path_list = []
@@ -127,6 +133,7 @@ class Generic_Dataset_3d(Dataset):
         self.label_names_text = []
         self.label_names = config['data']['label_names']
         self.label_list = config['data']['label_list']
+        self.label_dict = config['data']['label_dict']
         self.is_train = is_train
         self.folder_start = folder_start
         self.folder_end = folder_end
@@ -135,8 +142,10 @@ class Generic_Dataset_3d(Dataset):
         self.final_label_path_list = []
         self.final_label_names_list = []
         self.final_position_list = []
+        self.use_folder_idx = use_folder_idx
         #can be one of 2d_gaussian, 2d, 3d
         self.mode = "2d_gaussian"
+        self.apply_norm = apply_norm
 
         self.populate_lists()
         if shuffle_list:
@@ -152,17 +161,41 @@ class Generic_Dataset_3d(Dataset):
 
     def populate_lists(self):
         # print(self.folder_start, self.folder_end, self.label_list)
+        if self.use_folder_idx:
+            for case_no in sorted(os.listdir(os.path.join(self.root_path,'images'))):
+                if '.DS_Store' in case_no:
+                    continue
+                case_idx = int(case_no[:case_no.find('.')])
+                if not((case_idx>=self.folder_start) and (case_idx<self.folder_end)):
+                    continue
+                im_path = os.path.join(self.root_path, 'images',case_no)
+                label_path = os.path.join(self.root_path, 'labels', case_no)
+                for i in range(len(self.label_list)):
+                    self.img_path_list.append(im_path)
+                    self.label_path_list.append(label_path)
+                    self.label_names_text.append(self.label_names[i])
+        else:
+            if self.is_train:
+                for case_no in sorted(os.listdir(os.path.join(self.root_path,'train','images'))):
+                    if '.DS_Store' in case_no:
+                        continue
+                    im_path = os.path.join(self.root_path, 'train', 'images',case_no)
+                    label_path = os.path.join(self.root_path, 'train', 'labels', case_no)
+                    for i in range(len(self.label_list)):
+                        self.img_path_list.append(im_path)
+                        self.label_path_list.append(label_path)
+                        self.label_names_text.append(self.label_names[i])
+            else:
+                for case_no in sorted(os.listdir(os.path.join(self.root_path,'val','images'))):
+                    if '.DS_Store' in case_no:
+                        continue
+                    im_path = os.path.join(self.root_path, 'val', 'images',case_no)
+                    label_path = os.path.join(self.root_path, 'val', 'labels', case_no)
+                    for i in range(len(self.label_list)):
+                        self.img_path_list.append(im_path)
+                        self.label_path_list.append(label_path)
+                        self.label_names_text.append(self.label_names[i])
 
-        for case_no in sorted(os.listdir(os.path.join(self.root_path,'images'))):
-            case_idx = int(case_no[:case_no.find('.')])
-            if not((case_idx>=self.folder_start) and (case_idx<self.folder_end)):
-                continue
-            im_path = os.path.join(self.root_path, 'images',case_no)
-            label_path = os.path.join(self.root_path, 'labels', case_no)
-            for i in range(len(self.label_list)):
-                self.img_path_list.append(im_path)
-                self.label_path_list.append(label_path)
-                self.label_names_text.append(self.label_names[i])
 
     def __len__(self):
         assert(len(self.img_path_list)==len(self.label_path_list))
@@ -172,12 +205,12 @@ class Generic_Dataset_3d(Dataset):
         #load masks and images
         im = nib.load(self.img_path_list[index])
         label_text = self.label_names_text[index]
-        label_segmask_no = self.label_list[self.label_names.index(label_text)]
+        # label_segmask_no = self.label_list[self.label_names.index(label_text)]
         mask = nib.load(self.label_path_list[index])
         mask = np.asanyarray(mask.dataobj)
 
         #convert general mask into prompted segmentation mask per according to label name
-        gold = (mask==label_segmask_no)
+        gold = (mask==self.label_dict[label_text])
         gold = torch.Tensor(gold+0)
 
         #convert to C, H, W
@@ -223,12 +256,11 @@ class Generic_Dataset_3d(Dataset):
             else: #data originally is CXHXW
                 im = (torch.Tensor(np.asanyarray(im.dataobj)).unsqueeze(1).repeat(1,3,1,1))
 
-        gold = self.transform(gold, is_mask=True)
+        im, gold = self.transform(im, gold, apply_mean_norm=self.apply_norm)
         gold = (gold>=0.5)+0
-        im = self.transform(im)
         
         
-        return im, gold, label_segmask_no, label_text, s
+        return im, gold, self.label_dict[label_text], label_text, s
 
 class IDRID_Transform():
     def __init__(self, config):
@@ -1043,7 +1075,6 @@ class Endovis_Dataset(Dataset):
             img, label = self.data_transform(img, label, is_train=self.is_train, apply_norm=self.apply_norm)
 
             #convert all grayscale pixels due to resizing back to 0, 1
-            img, label = self.data_transform(img, label, is_train=self.is_train, apply_norm=self.apply_norm)
             label = (label>=0.5)+0
             label = label[0]
 
@@ -1053,7 +1084,85 @@ class Endovis_Dataset(Dataset):
     def __len__(self):
         return len(self.img_path_list)
 
-    
+class LiTS2_Dataset(Dataset):
+    def __init__(self, config, is_train=False, shuffle_list = True, apply_norm=True, no_text_mode=False) -> None:
+        super().__init__()
+        self.root_path = config['data']['root_path']
+        self.df = pd.read_csv(os.path.join(self.root_path, 'lits_train.csv'))
+        self.df = self.df.sample(frac=1)
+        self.train_df = self.df[:int(0.8*len(self.df))]
+        self.val_df = self.df[int(0.8*len(self.df)):]
+        self.img_names = []
+        self.img_path_list = []
+        self.label_path_list = []
+        self.label_list = []
+        self.is_train = is_train
+        self.label_names = config['data']['label_names']
+        self.num_classes = len(self.label_names)
+        self.config = config
+        self.apply_norm = apply_norm
+        self.no_text_mode = no_text_mode
+
+        self.populate_lists()
+        if shuffle_list:
+            p = [x for x in range(len(self.img_path_list))]
+            random.shuffle(p)
+            self.img_path_list = [self.img_path_list[pi] for pi in p]
+            self.img_names = [self.img_names[pi] for pi in p]
+            self.label_path_list = [self.label_path_list[pi] for pi in p]
+            self.label_list = [self.label_list[pi] for pi in p]
+
+        #define data transform
+        self.data_transform = LiTS2_Transform(config=config)
+
+    def __len__(self):
+        return len(self.img_path_list)
+
+    def set_is_train(self,istrain):
+        self.is_train = istrain
+
+    def populate_lists(self):
+        if self.is_train:
+            df = self.train_df
+        else:
+            df = self.val_df
+        
+        for i in range(len(df)):
+            img_path = os.path.join(self.root_path,'dataset_6',df['filepath'].iloc[i][18:])
+            liver_mask_path = os.path.join(self.root_path,'dataset_6',df['liver_maskpath'].iloc[i][18:])
+            tumor_mask_path = os.path.join(self.root_path,'dataset_6',df['tumor_maskpath'].iloc[i][18:])
+            self.img_path_list.append(img_path)
+            self.img_path_list.append(img_path)
+            self.img_names.append(df['filepath'].iloc[i][28:])
+            self.img_names.append(df['filepath'].iloc[i][28:])
+            self.label_path_list.append(liver_mask_path)
+            self.label_path_list.append(tumor_mask_path)
+            self.label_list.append("Liver")
+            self.label_list.append('Tumor')
+
+    def __getitem__(self, index):
+        img = torch.as_tensor(np.array(Image.open(self.img_path_list[index]).convert("RGB")))
+        if self.config['data']['volume_channel']==2:
+            img = img.permute(2,0,1)
+            
+        try:
+            label = torch.Tensor(np.array(Image.open(self.label_path_list[index])))[:,:,0]
+        except:
+            label = torch.zeros(img.shape[1], img.shape[2])
+
+        
+        label = label.unsqueeze(0)
+        label = (label>0)+0
+        label_of_interest = self.label_list[index]
+
+        #convert all grayscale pixels due to resizing back to 0, 1
+        img, label = self.data_transform(img, label, is_train=self.is_train, apply_norm=self.apply_norm)
+        label = (label>=0.5)+0
+        label = label[0]
+
+
+        return img, label, self.img_path_list[index], label_of_interest
+
 
 class KvasirSeg_Dataset(Dataset):
     def __init__(self, config, is_train=False, shuffle_list = True, apply_norm=True, no_text_mode=False):
@@ -1147,6 +1256,13 @@ def get_data(config, tr_folder_start, tr_folder_end, val_folder_start, val_folde
             if x=='val':
                 dataset_dict[x] = IDRID_Dataset(config, folder_start=40, folder_end=60, shuffle_list=False, apply_norm=use_norm)
             dataset_sizes[x] = len(dataset_dict[x])
+    elif config['data']['name'] == 'AMOS22':
+        for x in ['train','val']:
+            if x=='train':
+                dataset_dict[x] = Generic_Dataset_3d(config, folder_start=0, folder_end=40, shuffle_list=True, is_train=True, apply_norm=use_norm, use_folder_idx=False)
+            if x=='val':
+                dataset_dict[x] = Generic_Dataset_3d(config, folder_start=40, folder_end=60, shuffle_list=False, apply_norm=use_norm, use_folder_idx=False)
+            dataset_sizes[x] = len(dataset_dict[x])
 
     elif config['data']['name']=='ENDOVIS':
         for x in ['train','val']:
@@ -1194,6 +1310,16 @@ def get_data(config, tr_folder_start, tr_folder_end, val_folder_start, val_folde
                 dataset_dict[x] = KvasirSeg_Dataset(config, shuffle_list=True, is_train=True, apply_norm=use_norm, no_text_mode=no_text_mode)
             if x=='val':
                 dataset_dict[x] = KvasirSeg_Dataset(config, shuffle_list=False, apply_norm=use_norm, is_train=False, no_text_mode=no_text_mode)
+            dataset_sizes[x] = len(dataset_dict[x])
+
+    elif config['data']['name']=='LITS2':
+        dataset_lits = LiTS2_Dataset(config, shuffle_list=True, is_train=True, apply_norm=use_norm, no_text_mode=no_text_mode)
+        for x in ['train','val']:
+            if x=='train':
+                dataset_lits.set_is_train = True
+            if x=='val':
+                dataset_lits.set_is_train = False
+            dataset_dict[x] = dataset_lits
             dataset_sizes[x] = len(dataset_dict[x])
 
     else:

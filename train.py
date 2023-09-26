@@ -209,7 +209,8 @@ def train_dl(model, datasets, dataset_sizes, criterion, optimizer, scheduler, sa
             elif phase == 'val' and np.isnan(epoch_loss):
                 print("nan loss but saving model")
                 torch.save(model.state_dict(),sav_path)
-
+        if epoch%100==0:
+            torch.save(model.state_dict(), sav_path[:-4]+"_epoch"+str(epoch)+".pth")
 
     print(f'Best val loss: {best_loss:4f}, best val accuracy: {best_dice:2f}')
 

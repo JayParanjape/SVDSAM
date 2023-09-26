@@ -42,7 +42,7 @@ def main_datautils(config, use_norm=True):
     dataset_dict, dataset_sizes, label_dict = get_data(config, tr_folder_start=0, tr_folder_end=78000, val_folder_start=0, val_folder_end=104000, use_norm=use_norm)
     
     #test without generating examples for legacy
-    print(len(dataset_dict['train']))
+    # print(len(dataset_dict['train']))
     # for i in selected_idxs:
     #     temp = (dataset_dict['train'][i])
     #     print(temp[-1])
@@ -56,7 +56,10 @@ def main_datautils(config, use_norm=True):
 
     #test generate examples function
     print("testing generate examples\n")
-    dataset_dict['train'].generate_examples()
+    try:
+        dataset_dict['train'].generate_examples()
+    except:
+        pass
     print(len(dataset_dict['train']))
     for i in selected_idxs:
         temp = (dataset_dict['train'][i])
@@ -64,10 +67,20 @@ def main_datautils(config, use_norm=True):
         print(temp[-2])
         print(temp[0].shape)
         print(temp[1].shape)
-        plt.imshow(temp[0].permute(1,2,0), cmap='gray')
-        plt.show()
-        plt.imshow(temp[1], cmap='gray')
-        plt.show()
+        try:
+            plt.imshow(temp[1], cmap='gray')
+            plt.show()
+            plt.imshow(temp[0].permute(1,2,0), cmap='gray')
+            plt.show()
+            
+        except:
+            print("temp range: ",temp[0][0].min(),temp[0][0].max())
+            plt.imshow(temp[0][0].permute(1,2,0), cmap='gray')
+            plt.show()
+            print("temp label range: ",temp[1][0].min(),temp[1][0].max())
+            plt.imshow(temp[1][0], cmap='gray')
+            plt.show()
+        
 
 def main_model(config):
     print(config)
@@ -119,6 +132,8 @@ def main_train(data_config, model_config, pretrained_path, save_path, training_s
     #load data
     if data_config['data']['name']=='LITS':
         dataset_dict, dataset_sizes, label_dict = get_data(data_config, tr_folder_start=0, tr_folder_end=78, val_folder_start=78, val_folder_end=104)
+    elif data_config['data']['name'] == 'AMOS22':
+        dataset_dict, dataset_sizes, label_dict = get_data(data_config, tr_folder_start=0, tr_folder_end=78, val_folder_start=78, val_folder_end=104)
     elif data_config['data']['name']=='IDRID':
         dataset_dict, dataset_sizes, label_dict = get_data(data_config, tr_folder_start=0, tr_folder_end=40, val_folder_start=40, val_folder_end=104)
         dataloader_dict = {}
@@ -150,6 +165,11 @@ def main_train(data_config, model_config, pretrained_path, save_path, training_s
         for x in ['train','val']:
             dataloader_dict[x] = torch.utils.data.DataLoader(dataset_dict[x], batch_size=model_config['training']['batch_size'], shuffle=True, num_workers=4)
     elif data_config['data']['name']=='KVASIRSEG':
+        dataset_dict, dataset_sizes, label_dict = get_data(data_config, tr_folder_start=0, tr_folder_end=18000, val_folder_start=0, val_folder_end=34444)
+        dataloader_dict = {}
+        for x in ['train','val']:
+            dataloader_dict[x] = torch.utils.data.DataLoader(dataset_dict[x], batch_size=model_config['training']['batch_size'], shuffle=True, num_workers=4)
+    elif data_config['data']['name']=='LITS2':
         dataset_dict, dataset_sizes, label_dict = get_data(data_config, tr_folder_start=0, tr_folder_end=18000, val_folder_start=0, val_folder_end=34444)
         dataloader_dict = {}
         for x in ['train','val']:
@@ -195,6 +215,9 @@ def main_train(data_config, model_config, pretrained_path, save_path, training_s
 
         if model_config['prompts']['USE_TEXT_PROMPT']:
             if 'Text_Embedding_Affine' in name:
+                p.requires_grad = True
+        if model_config['prompts']['USE_SLICE_NUM']:
+            if 'slice' in name:
                 p.requires_grad = True
 
         if model_config['decoder_training']=='full':
@@ -243,6 +266,9 @@ def main_train(data_config, model_config, pretrained_path, save_path, training_s
     #train the model
     if data_config['data']['name']=='LITS':
         model = train(model, dataset_dict['train'], dataset_dict['val'], criterion, optimizer, save_path, num_epochs=training_params['num_epochs'], bs=training_params['batch_size'], device=device)
+    elif data_config['data']['name']=='AMOS22':
+        model = train(model, dataset_dict['train'], dataset_dict['val'], criterion, optimizer, save_path, num_epochs=training_params['num_epochs'], bs=training_params['batch_size'], device=device)
+
     elif data_config['data']['name']=='IDRID':
         model = train_dl(model, dataloader_dict, dataset_sizes, criterion, optimizer, exp_lr_scheduler, save_path, num_epochs=training_params['num_epochs'], bs=training_params['batch_size'], device=device, retain_graph=retain_graph, neg2pos_ratio=data_config['data']['negative_to_positive_ratio'], reg_multiplier=model_config['training']['reg_multiplier'])
     elif data_config['data']['name']=='ENDOVIS':
@@ -257,7 +283,8 @@ def main_train(data_config, model_config, pretrained_path, save_path, training_s
         model = train_dl(model, dataset_dict, dataset_sizes, criterion, optimizer, exp_lr_scheduler, save_path, num_epochs=training_params['num_epochs'], bs=training_params['batch_size'], device=device, retain_graph=retain_graph, neg2pos_ratio=data_config['data']['negative_to_positive_ratio'], reg_multiplier=model_config['training']['reg_multiplier'])
     elif data_config['data']['name']=='CHESTXDET':
         model = train_dl(model, dataset_dict, dataset_sizes, criterion, optimizer, exp_lr_scheduler, save_path, num_epochs=training_params['num_epochs'], bs=training_params['batch_size'], device=device, retain_graph=retain_graph, neg2pos_ratio=data_config['data']['negative_to_positive_ratio'], reg_multiplier=model_config['training']['reg_multiplier'])
-
+    elif data_config['data']['name']=='LITS2':
+        model = train_dl(model, dataset_dict, dataset_sizes, criterion, optimizer, exp_lr_scheduler, save_path, num_epochs=training_params['num_epochs'], bs=training_params['batch_size'], device=device, retain_graph=retain_graph, neg2pos_ratio=data_config['data']['negative_to_positive_ratio'], reg_multiplier=model_config['training']['reg_multiplier'])
 
 if __name__ == '__main__':
     args = parse_args()

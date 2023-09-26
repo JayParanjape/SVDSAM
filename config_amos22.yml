@@ -1,0 +1,36 @@
+data_transforms:
+  img_size: 256
+  use_random_crop: False
+  use_rotation: True
+  rotation_angle: 10
+  use_saturation: False
+  saturation: 2
+  use_brightness: False
+  brightness: 2
+  use_horizontal_flip: False
+data:
+  name: AMOS22
+  root_path: '/media/ubuntu/New Volume/jay/amos22/amos22'
+  label_list: [1,2,3,4,5,6,7,8,9,10,11,12,13,14,15]
+  label_names: ['spleen', 'right kidney', 'left kidney', 'gall bladder', 'esophagus', 'liver', 'stomach', 'aorta', 'postcava', 'pancreas', 'right adrenal gland', 'left adrenal gland', 'duodenum', 'bladder', 'prostate']
+  volume_channel: 2
+  sampling_deviation: 5
+  samples_per_slice: 3
+  negative_to_positive_ratio: -1
+  label_dict: {
+    'spleen' : 1,
+    'right kidney' : 2,
+    'left kidney' : 3,
+    'gall bladder' : 4,
+    'esophagus' : 5,
+    'liver' : 6,
+    'stomach' : 7,
+    'aorta' : 8,
+    'postcava' : 9,
+    'pancreas' : 10,
+    'right adrenal gland' : 11,
+    'left adrenal gland' : 12,
+    'duodenum' : 13,
+    'bladder' : 14,
+    'prostate' : 15
+  }

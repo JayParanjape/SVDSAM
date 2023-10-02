@@ -1,6 +1,6 @@
 sam:
   img_size: 256
-  num_classes: 13
+  num_classes: 1
 
 img_type: 'image'
 arch: "Prompt Adapted SAM"
@@ -21,8 +21,10 @@ training:
   lr: 1e-3
   batch_size: 32
   num_epochs: 1000
-  schedule_step: 500
-  schedule_step_factor: 0.2
+  schedule_step: 50
+  schedule_step_factor: 0.5
   weight_decay: 1e-2
   loss: 'focal'
   reg_multiplier: 0
+
+use_lora: False

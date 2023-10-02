@@ -52,7 +52,7 @@ def weighted_ce_loss(y_pred, y_true, alpha=64, smooth=1):
     loss = -torch.mean(torch.mean((multiplier_1*y_true*torch.log(y_pred)) + (1-y_true)*(torch.log(1-y_pred)),dim=(-1,-2)))
     return loss
 
-def focal_loss(y_pred, y_true, alpha_def=0.75, gamma=3):
+def focal_loss(y_pred, y_true, alpha_def=0.75, gamma=2):
     # print('going back to the default value of alpha')
     alpha = alpha_def
     ce_loss = F.binary_cross_entropy_with_logits(y_pred, y_true, reduction="none")

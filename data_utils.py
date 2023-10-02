@@ -25,6 +25,9 @@ from data_transforms.kvasirSeg_transform import kvasirSeg_Transform
 from data_transforms.ChestXDet_transform import ChestXDet_Transform
 from data_transforms.lits2_transform import LiTS2_Transform
 
+from datasets.isic2018 import ISIC2018_Dataset
+from datasets.polyp import Polyp_Dataset
+
 def make_positive_negative_files(config, output_root, label_dict, populated_img_path_list, populated_gt_list, populated_classname_list, rgb_gt = False, name_prefix='val'):
     # generates positive and negative example files for each class
     #positive example file has a list of all images and labels where the class is present
@@ -1122,6 +1125,10 @@ class LiTS2_Dataset(Dataset):
         self.is_train = istrain
 
     def populate_lists(self):
+        self.img_names = []
+        self.img_path_list = []
+        self.label_path_list = []
+        self.label_list = []
         if self.is_train:
             df = self.train_df
         else:
@@ -1319,7 +1326,24 @@ def get_data(config, tr_folder_start, tr_folder_end, val_folder_start, val_folde
                 dataset_lits.set_is_train = True
             if x=='val':
                 dataset_lits.set_is_train = False
+            dataset_lits.populate_lists()
             dataset_dict[x] = dataset_lits
+            dataset_sizes[x] = len(dataset_dict[x])
+
+    elif config['data']['name']=="ISIC2018":
+        for x in ['train','val']:
+            if x=='train':
+                dataset_dict[x] = ISIC2018_Dataset(config, shuffle_list=True, is_train=True, apply_norm=use_norm, no_text_mode=no_text_mode)
+            if x=='val':
+                dataset_dict[x] = ISIC2018_Dataset(config, shuffle_list=False, apply_norm=use_norm, is_train=False, no_text_mode=no_text_mode)
+            dataset_sizes[x] = len(dataset_dict[x])
+
+    elif config['data']['name']=="Polyp":
+        for x in ['train','val']:
+            if x=='train':
+                dataset_dict[x] = Polyp_Dataset(config, shuffle_list=True, is_train=True, apply_norm=use_norm, no_text_mode=no_text_mode)
+            if x=='val':
+                dataset_dict[x] = Polyp_Dataset(config, shuffle_list=False, apply_norm=use_norm, is_train=False, no_text_mode=no_text_mode)
             dataset_sizes[x] = len(dataset_dict[x])
 
     else:

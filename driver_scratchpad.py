@@ -185,6 +185,16 @@ def main_train(data_config, model_config, pretrained_path, save_path, training_s
         dataloader_dict = {}
         for x in ['train','val']:
             dataloader_dict[x] = torch.utils.data.DataLoader(dataset_dict[x], batch_size=model_config['training']['batch_size'], shuffle=True, num_workers=4)
+    elif data_config['data']['name']=='RITE':
+        dataset_dict, dataset_sizes, label_dict = get_data(data_config, tr_folder_start=0, tr_folder_end=18000, val_folder_start=0, val_folder_end=34444)
+        dataloader_dict = {}
+        for x in ['train','val']:
+            dataloader_dict[x] = torch.utils.data.DataLoader(dataset_dict[x], batch_size=model_config['training']['batch_size'], shuffle=True, num_workers=4)
+    elif data_config['data']['name']=='GLAS':
+        dataset_dict, dataset_sizes, label_dict = get_data(data_config, tr_folder_start=0, tr_folder_end=18000, val_folder_start=0, val_folder_end=34444)
+        dataloader_dict = {}
+        for x in ['train','val']:
+            dataloader_dict[x] = torch.utils.data.DataLoader(dataset_dict[x], batch_size=model_config['training']['batch_size'], shuffle=True, num_workers=4)
 
 
     #load model
@@ -266,6 +276,8 @@ def main_train(data_config, model_config, pretrained_path, save_path, training_s
         criterion.append(dice_loss)
     if 'focal' in training_params['loss']:
         criterion.append(focal_loss)
+    if 'CE' in training_params['loss']:
+        criterion.append(nn.BCELoss())
     if 'weighted CE' in training_params['loss']:
         criterion.append(weighted_ce_loss)
     if criterion==[]:
@@ -279,6 +291,7 @@ def main_train(data_config, model_config, pretrained_path, save_path, training_s
         model = train(model, dataset_dict['train'], dataset_dict['val'], criterion, optimizer, save_path, num_epochs=training_params['num_epochs'], bs=training_params['batch_size'], device=device)
     elif data_config['data']['name']=='AMOS22':
         model = train(model, dataset_dict['train'], dataset_dict['val'], criterion, optimizer, save_path, num_epochs=training_params['num_epochs'], bs=training_params['batch_size'], device=device)
+        # model = train_dl(model, dataset_dict, dataset_sizes, criterion, optimizer, exp_lr_scheduler, save_path, num_epochs=training_params['num_epochs'], bs=training_params['batch_size'], device=device, retain_graph=retain_graph, neg2pos_ratio=data_config['data']['negative_to_positive_ratio'], reg_multiplier=model_config['training']['reg_multiplier'])
 
     elif data_config['data']['name']=='IDRID':
         model = train_dl(model, dataloader_dict, dataset_sizes, criterion, optimizer, exp_lr_scheduler, save_path, num_epochs=training_params['num_epochs'], bs=training_params['batch_size'], device=device, retain_graph=retain_graph, neg2pos_ratio=data_config['data']['negative_to_positive_ratio'], reg_multiplier=model_config['training']['reg_multiplier'])
@@ -300,6 +313,11 @@ def main_train(data_config, model_config, pretrained_path, save_path, training_s
         model = train_dl(model, dataset_dict, dataset_sizes, criterion, optimizer, exp_lr_scheduler, save_path, num_epochs=training_params['num_epochs'], bs=training_params['batch_size'], device=device, retain_graph=retain_graph, neg2pos_ratio=data_config['data']['negative_to_positive_ratio'], reg_multiplier=model_config['training']['reg_multiplier'])
     elif data_config['data']['name']=='Polyp':
         model = train_dl(model, dataset_dict, dataset_sizes, criterion, optimizer, exp_lr_scheduler, save_path, num_epochs=training_params['num_epochs'], bs=training_params['batch_size'], device=device, retain_graph=retain_graph, neg2pos_ratio=data_config['data']['negative_to_positive_ratio'], reg_multiplier=model_config['training']['reg_multiplier'])
+    elif data_config['data']['name']=='RITE':
+        model = train_dl(model, dataset_dict, dataset_sizes, criterion, optimizer, exp_lr_scheduler, save_path, num_epochs=training_params['num_epochs'], bs=training_params['batch_size'], device=device, retain_graph=retain_graph, neg2pos_ratio=data_config['data']['negative_to_positive_ratio'], reg_multiplier=model_config['training']['reg_multiplier'])
+    elif data_config['data']['name']=='GLAS':
+        model = train_dl(model, dataset_dict, dataset_sizes, criterion, optimizer, exp_lr_scheduler, save_path, num_epochs=training_params['num_epochs'], bs=training_params['batch_size'], device=device, retain_graph=retain_graph, neg2pos_ratio=data_config['data']['negative_to_positive_ratio'], reg_multiplier=model_config['training']['reg_multiplier'])
+
 
 if __name__ == '__main__':
     args = parse_args()
@@ -318,5 +336,5 @@ if __name__ == '__main__':
     # #for testing on the test dataset
     # main_test(data_config, model_config, args.pretrained_path)
 
-    # for training the model
+    # # for training the model
     main_train(data_config, model_config, args.pretrained_path, args.save_path, args.training_strategy, device=args.device)

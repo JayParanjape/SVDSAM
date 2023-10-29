@@ -9,7 +9,7 @@ decoder_training: 'none'
 mlp_transform: False
 
 prompts:
-  USE_TEXT_PROMPT: True
+  USE_TEXT_PROMPT: False
   USE_IMAGE_PROMPT: False
   USE_SLICE_NUM: False
   LOCATION: 'prepend'
@@ -27,4 +27,4 @@ training:
   loss: 'focal'
   reg_multiplier: 0
 
-use_lora: True
+use_lora: False

@@ -19,7 +19,7 @@ class UNet(nn.Module):
         self.soft = nn.Softmax(dim =1)
 
     def forward(self, x, text_dummy):
-        return self.soft(self.model(x))
+        return self.soft(self.model(x)),0
 
 
 def conv1x1(in_planes: int, out_planes: int, stride: int = 1) -> nn.Conv2d:
@@ -319,7 +319,7 @@ class UNext(nn.Module):
         out = torch.add(out,t1)
         out = F.relu(F.interpolate(self.decoder5(out),scale_factor=(2,2),mode ='bilinear'))
 
-        return self.soft(self.final(out))
+        return self.soft(self.final(out)),0
 
 
 class UNext_S(nn.Module):

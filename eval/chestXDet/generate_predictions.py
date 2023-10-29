@@ -82,14 +82,31 @@ def main():
         os.makedirs(os.path.join(args.save_path,"rescaled_gt"),exist_ok=True)
 
     #load model
-    # model = Prompt_Adapted_SAM(config=model_config, label_text_dict=label_dict, device=args.device, training_strategy='svdtuning')
-    model = Prompt_Adapted_SAM(config=model_config, label_text_dict=label_dict, device=args.device, training_strategy='lora')
+    model = Prompt_Adapted_SAM(config=model_config, label_text_dict=label_dict, device=args.device, training_strategy='svdtuning')
+    # model = Prompt_Adapted_SAM(config=model_config, label_text_dict=label_dict, device=args.device, training_strategy='lora')
     
     # print(model)
     # model.load_state_dict(torch.load(args.pretrained_path, map_location=args.device), strict=False)
     # temp = torch.load(args.pretrained_path, map_location=args.device)
     # print(list(temp.keys()))
-    model.load_state_dict(torch.load(args.pretrained_path, map_location=args.device))
+    #legacy model support
+    sdict = torch.load(args.pretrained_path, map_location=args.device)
+    # for key in list(sdict.keys()):
+    #     if 'sam_encoder.neck' in key:
+    #         if '0' in key:
+    #             new_key = key.replace('0','conv1')
+    #         if '1' in key:
+    #             new_key = key.replace('1','ln1')
+    #         if '2' in key:
+    #             new_key = key.replace('2','conv2')
+    #         if '3' in key:
+    #             new_key = key.replace('3','ln2')
+    #         sdict[new_key] = sdict[key]
+    #         _ = sdict.pop(key)
+    #     if 'mask_decoder' in key:
+    #         if 'trainable' in key:
+    #             _ = sdict.pop(key)   
+    model.load_state_dict(sdict,strict=True)
     model = model.to(args.device)
     model = model.eval()
 
@@ -102,8 +119,8 @@ def main():
 
     #load data
     for i,img_name in enumerate(sorted(os.listdir(args.data_folder))):
-        if i%5!=0:
-            continue
+        # if i%5!=0:
+        #     continue
         img_path = (os.path.join(args.data_folder,img_name))
         if args.gt_path:
             gt_path = (os.path.join(args.gt_path,img_name))

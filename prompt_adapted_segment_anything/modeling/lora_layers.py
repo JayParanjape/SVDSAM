@@ -4,7 +4,7 @@ from torch.nn import functional as F
 from typing import Type
 
 class LoRALinear(nn.Linear):
-    def __init__(self, in_features: int, out_features: int, bias: bool = True, device=None, dtype=None, r=16, scale=1) -> None:
+    def __init__(self, in_features: int, out_features: int, bias: bool = True, device=None, dtype=None, r=4, scale=1) -> None:
         super().__init__(in_features, out_features, bias, device, dtype)
         self.r = r
         self.trainable_lora_down = nn.Linear(in_features, r, bias=False)
@@ -21,7 +21,7 @@ class LoRALinear(nn.Linear):
         return  out,0
 
 class LoRAConv2D(nn.Conv2d):
-    def __init__(self, in_channels: int, out_channels: int, kernel_size, stride = 1, padding = 0, dilation = 1, groups = 1, bias = True, padding_mode: str = 'zeros', device=None, dtype=None, r=16, scale=1) -> None:
+    def __init__(self, in_channels: int, out_channels: int, kernel_size, stride = 1, padding = 0, dilation = 1, groups = 1, bias = True, padding_mode: str = 'zeros', device=None, dtype=None, r=4, scale=1) -> None:
         super().__init__(in_channels, out_channels, kernel_size, stride, padding, dilation, groups, bias, padding_mode, device, dtype)
         assert type(kernel_size) is int
         self.r = r

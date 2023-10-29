@@ -8,8 +8,12 @@ sys.path.append("/home/ubuntu/Desktop/Domain_Adaptation_Project/repos/SVDSAM/")
 from data_utils import *
 from model import *
 from utils import *
+from baselines import UNet, UNext, medt_net
+from vit_seg_modeling import VisionTransformer
+from vit_seg_modeling import CONFIGS as CONFIGS_ViT_seg
+from axialnet import MedT
 
-label_names = ['Liver', 'Tumor']
+label_names = ['Liver','Tumor']
 # visualize_li = [[1,0,0],[0,1,0],[1,0,0], [0,0,1], [0,0,1]]
 label_dict = {}
 # visualize_dict = {}
@@ -19,6 +23,9 @@ for i,ln in enumerate(label_names):
 
 def parse_args():
     parser = argparse.ArgumentParser()
+
+    parser.add_argument('--data_folder', default='config_tmp.yml',
+                        help='data folder file path')
 
     parser.add_argument('--data_config', default='config_tmp.yml',
                         help='data config file path')
@@ -37,8 +44,6 @@ def parse_args():
 
     parser.add_argument('--device', default='cuda:0', help='device to train on')
 
-    parser.add_argument('--labels_of_interest', default='Left Prograsp Forceps,Maryland Bipolar Forceps,Right Prograsp Forceps,Left Large Needle Driver,Right Large Needle Driver', help='labels of interest')
-
     parser.add_argument('--codes', default='1,2,1,3,3', help='numeric label to save per instrument')
 
     args = parser.parse_args()
@@ -51,6 +56,19 @@ def main():
         data_config = yaml.load(f, Loader=yaml.FullLoader)
     with open(args.model_config, 'r') as f:
         model_config = yaml.load(f, Loader=yaml.FullLoader)
+    codes = args.codes.split(',')
+    codes = [int(c) for c in codes]
+
+    label_dict = {
+            'Liver': [[100,0,100]],
+            'Kidney': [[255,255,0]],
+            'Pancreas': [[0,0,255]],
+            'Vessels': [[255,0,0]],
+            'Adrenals': [[0,255,255]],
+            'Gall Bladder': [[0,255,0]],
+            'Bones': [[255,255,255]],
+            'Spleen': [[255,0,255]]
+        }
 
 
     #make folder to save visualizations
@@ -58,29 +76,30 @@ def main():
     os.makedirs(os.path.join(args.save_path,"rescaled_preds"),exist_ok=True)
     os.makedirs(os.path.join(args.save_path,"rescaled_gt"),exist_ok=True)
 
+
     #load model
-    model = Prompt_Adapted_SAM(config=model_config, label_text_dict=label_dict, device=args.device, training_strategy='svdtuning')
-    # model = Prompt_Adapted_SAM(config=model_config, label_text_dict=label_dict, device=args.device, training_strategy='lora')
-    
-    #legacy model support
-    sdict = torch.load(args.pretrained_path, map_location=args.device)
-    # for key in list(sdict.keys()):
-    #     if 'sam_encoder.neck' in key:
-    #         if '0' in key:
-    #             new_key = key.replace('0','conv1')
-    #         if '1' in key:
-    #             new_key = key.replace('1','ln1')
-    #         if '2' in key:
-    #             new_key = key.replace('2','conv2')
-    #         if '3' in key:
-    #             new_key = key.replace('3','ln2')
-    #         sdict[new_key] = sdict[key]
-    #         _ = sdict.pop(key)
-    #     if 'mask_decoder' in key:
-    #         if 'trainable' in key:
-    #             _ = sdict.pop(key)   
-    
-    model.load_state_dict(sdict,strict=True)
+    #change the img size in model config according to data config
+    in_channels = model_config['in_channels']
+    out_channels = model_config['num_classes']
+    img_size = model_config['img_size']
+    if model_config['arch']=='Prompt Adapted SAM':
+        model = Prompt_Adapted_SAM(model_config, label_dict, args.device, training_strategy='svdtuning')
+    elif model_config['arch']=='UNet':
+        model = UNet(in_channels=in_channels, out_channels=out_channels)
+    elif model_config['arch']=='UNext':
+        model = UNext(num_classes=out_channels, input_channels=in_channels, img_size=img_size)
+    elif model_config['arch']=='MedT':
+        #TODO
+        model = MedT(img_size=img_size, num_classes=out_channels)
+    elif model_config['arch']=='TransUNet':
+        config_vit = CONFIGS_ViT_seg['R50-ViT-B_16']
+        config_vit.n_classes = out_channels
+        config_vit.n_skip = 3
+        # if args.vit_name.find('R50') != -1:
+        #     config_vit.patches.grid = (int(args.img_size / args.vit_patches_size), int(args.img_size / args.vit_patches_size))
+        model = VisionTransformer(config_vit, img_size=img_size, num_classes=config_vit.n_classes)
+
+    model.load_state_dict(torch.load(args.pretrained_path, map_location=args.device))
     model = model.to(args.device)
     model = model.eval()
 
@@ -99,8 +118,8 @@ def main():
     imgs_path = os.path.join(root_path, 'dataset_6/dataset_6')
     test_csv = pd.read_csv(os.path.join(root_path, 'lits_test.csv'))
     for i in range(len(test_csv)):
-        # if i%10!=0:
-        #     continue
+        if i%10!=0:
+            continue
         img_path = (os.path.join(root_path,'dataset_6',test_csv['filepath'].iloc[i][18:]))
         image_name = test_csv['filepath'].iloc[i][28:]
         liver_mask_path = os.path.join(root_path,'dataset_6',test_csv['liver_maskpath'].iloc[i][18:])
@@ -145,21 +164,17 @@ def main():
 
         #get image embeddings
         img = img1.unsqueeze(0).to(args.device)  #1XCXHXW
-        img_embeds = model.get_image_embeddings(img)
+        final_label = torch.cat([liver_label,tumor_label], dim=0)
+        masks,_ = model(img,'')
+        masks_liver = masks[:,0,:,:].cpu()
+        masks_tumor = masks[:,1,:,:].cpu()
 
-        # generate masks for all labels of interest
-        img_embeds_repeated = img_embeds.repeat(1,1,1,1)
-        x_text = ['Liver']
-        x_text2 = ['Tumor']
-        masks_liver = model.get_masks_for_multiple_labels(img_embeds_repeated, x_text).cpu()
-        masks_tumor = model.get_masks_for_multiple_labels(img_embeds_repeated, x_text2).cpu()
-
-        plt.imshow((masks_liver[0]>=0.5), cmap='gray')
+        plt.imshow(((masks_liver>=0.5)[0]), cmap='gray')
         plt.savefig(os.path.join(args.save_path,'rescaled_preds', image_name[:-4] +'_liver.png'))
         plt.close()
         # plt.show()
 
-        plt.imshow((masks_tumor[0]>=0.5), cmap='gray')
+        plt.imshow(((masks_tumor>=0.5)[0]), cmap='gray')
         plt.savefig(os.path.join(args.save_path,'rescaled_preds', image_name[:-4] +'_tumor.png'))
         plt.close()
         # plt.show()
@@ -190,6 +205,7 @@ def main():
     print("Liver IoU", torch.mean(torch.Tensor(liver_ious)))
     print("Tumor DICE", torch.mean(torch.Tensor(tumor_dices)))
     print("Tumor IoU", torch.mean(torch.Tensor(tumor_ious)))
+
 if __name__ == '__main__':
     main()
 

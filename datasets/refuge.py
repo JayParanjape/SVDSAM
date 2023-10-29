@@ -5,10 +5,10 @@ import torch
 from PIL import Image
 from torch.utils.data import Dataset
 
-from data_transforms.isic2018_transform import ISIC_Transform
+from data_transforms.refuge_transform import Refuge_Transform
 
 
-class ISIC2018_Dataset(Dataset):
+class Refuge_Dataset(Dataset):
     def __init__(self, config, is_train=False, shuffle_list = True, apply_norm=True, no_text_mode=False) -> None:
         super().__init__()
         self.root_path = config['data']['root_path']
@@ -22,6 +22,10 @@ class ISIC2018_Dataset(Dataset):
         self.config = config
         self.apply_norm = apply_norm
         self.no_text_mode = no_text_mode
+        self.label_dict = {
+            'optic cup': 2,
+            'optic disk': 1
+        }
 
         self.populate_lists()
         if shuffle_list:
@@ -33,21 +37,18 @@ class ISIC2018_Dataset(Dataset):
             self.label_list = [self.label_list[pi] for pi in p]
 
         #define data transform
-        self.data_transform = ISIC_Transform(config=config)
+        self.data_transform = Refuge_Transform(config=config)
 
     def __len__(self):
         return len(self.img_path_list)
 
     def populate_lists(self):
-        # if self.is_train:
-        #     imgs_path = os.path.join(self.root_path, 'ISIC2018_Task1-2_Training_Input')
-        #     labels_path = os.path.join(self.root_path, 'ISIC2018_Task1_Training_GroundTruth')
         if self.is_train:
-            imgs_path = os.path.join(self.root_path, 'ISIC2018_Task1-2_TrainVal_Input')
-            labels_path = os.path.join(self.root_path, 'ISIC2018_Task1_TrainVal_GroundTruth')
+            imgs_path = os.path.join(self.root_path, 'train/Images_Cropped')
+            labels_path = os.path.join(self.root_path, 'train/Masks_Cropped')
         else:
-            imgs_path = os.path.join(self.root_path, 'ISIC2018_Task1-2_Validation_Input')
-            labels_path = os.path.join(self.root_path, 'ISIC2018_Task1_Validation_GroundTruth')
+            imgs_path = os.path.join(self.root_path, 'val/Images_Cropped')
+            labels_path = os.path.join(self.root_path, 'val/Masks_Cropped')
 
         for img in os.listdir(imgs_path):
             if (('jpg' not in img) and ('jpeg not in img') and ('png' not in img)):
@@ -55,13 +56,13 @@ class ISIC2018_Dataset(Dataset):
             if self.no_text_mode:
                 self.img_names.append(img)
                 self.img_path_list.append(os.path.join(imgs_path,img))
-                self.label_path_list.append(os.path.join(labels_path, img[:-4]+'_segmentation.png'))
+                self.label_path_list.append(os.path.join(labels_path, img[:-4]+'.png'))
                 self.label_list.append('')
             else:
                 for label_name in self.label_names:
                     self.img_names.append(img)
                     self.img_path_list.append(os.path.join(imgs_path,img))
-                    self.label_path_list.append(os.path.join(labels_path, img[:-4]+'_segmentation.png'))
+                    self.label_path_list.append(os.path.join(labels_path, img[:-4]+'.png'))
                     self.label_list.append(label_name)
 
 
@@ -74,6 +75,7 @@ class ISIC2018_Dataset(Dataset):
             label = torch.Tensor(np.array(Image.open(self.label_path_list[index])))
             if len(label.shape)==3:
                 label = label[:,:,0]
+            label = (label==self.label_dict[self.label_list[index]])
         except:
             label = torch.zeros(img.shape[1], img.shape[2])
         

@@ -708,7 +708,7 @@ class medt_net(nn.Module):
         return x
 
     def forward(self, x, text_dummy):
-        return self.soft(self._forward_impl(x))
+        return self.soft(self._forward_impl(x)),0
 
 
 def axialunet(pretrained=False, **kwargs):

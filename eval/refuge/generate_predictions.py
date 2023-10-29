@@ -8,9 +8,9 @@ sys.path.append("/home/ubuntu/Desktop/Domain_Adaptation_Project/repos/SVDSAM/")
 from data_utils import *
 from model import *
 from utils import *
+from data_transforms.refuge_transform import Refuge_Transform
 
-label_names = ['Grasper', 'L Hook Electrocautery', 'Liver', 'Fat', 'Gall Bladder','Abdominal Wall','Gastrointestinal Tract','Cystic Duct','Blood','Hepatic Vein', 'Liver Ligament', 'Connective Tissue']
-# visualize_li = [[1,0,0],[0,1,0],[1,0,0], [0,0,1], [0,0,1]]
+label_names = ['optic cup', 'optic disk']
 label_dict = {}
 # visualize_dict = {}
 for i,ln in enumerate(label_names):
@@ -55,24 +55,11 @@ def main():
     with open(args.model_config, 'r') as f:
         model_config = yaml.load(f, Loader=yaml.FullLoader)
     labels_of_interest = args.labels_of_interest.split(',')
-    codes = args.codes.split(',')
-    codes = [int(c) for c in codes]
 
-    label_dict2 = {
-            'Grasper':31,
-            'L Hook Electrocautery':32,
-            'Liver':21,
-            'Fat':12, 
-            'Gall Bladder':22,
-            'Abdominal Wall':11,
-            'Gastrointestinal Tract':13,
-            'Cystic Duct':25,
-            'Blood':24,
-            'Hepatic Vein':33,
-            'Liver Ligament':5,
-            'Connective Tissue':23
-        }
-
+    label_dict = {
+        'optic cup': 2,
+        'optic disk': 1
+    }
 
     #make folder to save visualizations
     os.makedirs(os.path.join(args.save_path,"preds"),exist_ok=True)
@@ -81,9 +68,9 @@ def main():
         os.makedirs(os.path.join(args.save_path,"rescaled_gt"),exist_ok=True)
 
     #load model
-    model = Prompt_Adapted_SAM(config=model_config, label_text_dict=label_dict, device=args.device,training_strategy='svdtuning')
-    # model = Prompt_Adapted_SAM(config=model_config, label_text_dict=label_dict, device=args.device,training_strategy='lora')
-
+    model = Prompt_Adapted_SAM(config=model_config, label_text_dict=label_dict, device=args.device, training_strategy='svdtuning')
+    # model = Prompt_Adapted_SAM(config=model_config, label_text_dict=label_dict, device=args.device, training_strategy='lora')
+    
     #legacy model support
     sdict = torch.load(args.pretrained_path, map_location=args.device)
     # for key in list(sdict.keys()):
@@ -103,14 +90,11 @@ def main():
     #             _ = sdict.pop(key)   
     
     model.load_state_dict(sdict,strict=True)
-    
-    
-    
     model = model.to(args.device)
     model = model.eval()
 
     #load data transform
-    data_transform = Cholec_8k_Transform(config=data_config)
+    data_transform = Refuge_Transform(config=data_config)
 
     #dice
     dices = []
@@ -118,11 +102,13 @@ def main():
 
     #load data
     for i,img_name in enumerate(sorted(os.listdir(args.data_folder))):
-        if i%5!=0:
+        if (('png' not in img_name) and ('jpg' not in img_name) and ('jpeg' not in img_name) and ('bmp' not in img_name)):
             continue
+        # if i%5!=0:
+        #     continue
         img_path = (os.path.join(args.data_folder,img_name))
         if args.gt_path:
-            gt_path = (os.path.join(args.gt_path,img_name[:img_name.find('.')]+'_watershed_mask.png'))
+            gt_path = (os.path.join(args.gt_path,img_name[:-4]+'.png'))
 
         # print(img_path)
         img = torch.as_tensor(np.array(Image.open(img_path).convert("RGB")))
@@ -131,19 +117,14 @@ def main():
         #make a dummy mask of shape 1XHXW
         if args.gt_path:
             label_of_interest = args.labels_of_interest
-            gold = np.array(Image.open(gt_path))
-
-            if len(gold.shape)==3:
-                gold = gold[:,:,0]
-            if gold.max()<2:
-                gold = (gold*255).astype(int)
-
+            label = torch.Tensor(np.array(Image.open(gt_path)))
+            if len(label.shape)==3:
+                label = label[:,:,0]
+            label = (label == label_dict[label_of_interest])
+            label = label.unsqueeze(0)
+            mask = (label>0)+0
             # plt.imshow(gold)
             # plt.show()
-            mask = (gold==label_dict2[label_of_interest])
-            
-            mask = torch.Tensor(mask+0)
-            mask = torch.Tensor(mask).unsqueeze(0)
 
         else:
             mask = torch.zeros((1,H,W))
@@ -158,28 +139,9 @@ def main():
         img_embeds_repeated = img_embeds.repeat(len(labels_of_interest),1,1,1)
         x_text = [t for t in labels_of_interest]
         masks = model.get_masks_for_multiple_labels(img_embeds_repeated, x_text).cpu()
-        argmax_masks = torch.argmax(masks, dim=0)
-        final_mask = torch.zeros(masks[0].shape)
-        final_mask_rescaled = torch.zeros(masks[0].shape).unsqueeze(-1).repeat(1,1,3)
-        #save masks
-        for i in range(final_mask.shape[0]):
-            for j in range(final_mask.shape[1]):
-                final_mask[i,j] = codes[argmax_masks[i,j]] if masks[argmax_masks[i,j],i,j]>=0.5 else 0
-                # final_mask_rescaled[i,j] = torch.Tensor(visualize_dict[(labels_of_interest[argmax_masks[i,j]])] if masks[argmax_masks[i,j],i,j]>=0.5 else [0,0,0])
-
-        # save_im = Image.fromarray(final_mask.numpy())
-        # save_im.save(os.path.join(args.save_path,'preds', img_name))
-
-        # plt.imshow(final_mask_rescaled,cmap='gray')
-        # plt.savefig(os.path.join(args.save_path,'rescaled_preds', img_name))
-        # plt.close()
-
-        # print("label shape: ", label.shape)
-        # plt.imshow(label[0], cmap='gray')
-        # plt.show()
 
         plt.imshow((masks[0]>=0.5), cmap='gray')
-        plt.savefig(os.path.join(args.save_path,'rescaled_preds', img_name))
+        plt.savefig(os.path.join(args.save_path,'rescaled_preds', img_name[:-4]+'.png'))
         plt.close()
 
         if args.gt_path:

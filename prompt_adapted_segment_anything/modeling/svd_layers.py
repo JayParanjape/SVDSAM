@@ -6,7 +6,7 @@ from typing import Type
 
 
 class SVDLinear(nn.Linear):
-    def __init__(self, in_features: int, out_features: int, bias: bool = True, device=None, dtype=None, mlp_transform=False) -> None:
+    def __init__(self, in_features: int, out_features: int, bias: bool = True, device=None, dtype=None, mlp_transform=False, fraction_trainable=1) -> None:
         super().__init__(in_features, out_features, bias, device, dtype)
         self.U, self.S, self.Vt = torch.linalg.svd(self.weight, full_matrices=False)
         self.weight.requires_grad = False
@@ -18,8 +18,13 @@ class SVDLinear(nn.Linear):
                 mlp_dim=256
             )
         else:
-            self.trainable_scale = nn.Parameter(torch.ones_like(self.S))
-            self.trainable_shift = nn.Parameter(torch.zeros_like(self.S))
+            S_len = (self.S.shape[0])
+            # self.trainable_scale = nn.Parameter(torch.ones(int(S_len*1)))
+            self.trainable_scale = nn.Parameter(torch.ones(int(S_len*fraction_trainable)))
+            # self.trainable_shift = nn.Parameter(torch.zeros(int(S_len*0)))
+            self.trainable_shift = nn.Parameter(torch.zeros(int(S_len*fraction_trainable)))
+            self.frozen_scale = torch.ones(S_len-self.trainable_scale.shape[0])
+            self.frozen_shift = torch.ones(S_len - self.trainable_shift.shape[0])
         self.reset_parameters()
 
     def perform_svd(self):
@@ -41,7 +46,9 @@ class SVDLinear(nn.Linear):
             weight_updated = self.U.to(input.device, dtype=input.dtype) @ torch.diag(F.relu(s_new)).to(input.device) @ self.Vt.to(device=input.device, dtype=input.dtype)
             reg_loss = torch.norm(s_new - self.S)
         else:
-            weight_updated = self.U.to(input.device, dtype=input.dtype) @ torch.diag(F.relu(self.trainable_scale.to(input.device, dtype=input.dtype)*self.S.to(input.device, dtype=input.dtype) + self.trainable_shift)) @ self.Vt.to(device=input.device, dtype=input.dtype)
+            scale = torch.cat([self.trainable_scale,self.frozen_scale.to(input.device)])
+            shift = torch.cat([self.trainable_shift, self.frozen_shift.to(input.device)])
+            weight_updated = self.U.to(input.device, dtype=input.dtype) @ torch.diag(F.relu(scale.to(input.device, dtype=input.dtype)*self.S.to(input.device, dtype=input.dtype) + shift)) @ self.Vt.to(device=input.device, dtype=input.dtype)
             reg_loss = torch.norm(1 - self.trainable_scale) + torch.norm(self.trainable_shift)
         return F.linear(input, weight_updated, self.bias), reg_loss
 
@@ -54,6 +61,7 @@ class SVDConv2d(nn.Conv2d):
         kernel_size: int,
         scale: float = 1.0,
         mlp_transform: bool = False,
+        fraction_trainable=1,
         **kwargs
     ):
         nn.Conv2d.__init__(self, in_channels, out_channels, kernel_size, **kwargs)
@@ -71,8 +79,13 @@ class SVDConv2d(nn.Conv2d):
                 mlp_dim=256
             )
         else:
-            self.trainable_scale = nn.Parameter(torch.ones_like(self.S))
-            self.trainable_shift = nn.Parameter(torch.zeros_like(self.S))
+            S_len = (self.S.shape[0])
+            # self.trainable_scale = nn.Parameter(torch.ones(int(S_len*1)))
+            self.trainable_scale = nn.Parameter(torch.ones(int(S_len*fraction_trainable)))
+            # self.trainable_shift = nn.Parameter(torch.zeros(int(S_len*0)))
+            self.trainable_shift = nn.Parameter(torch.zeros(int(S_len*fraction_trainable)))
+            self.frozen_scale = torch.ones(S_len-self.trainable_scale.shape[0])
+            self.frozen_shift = torch.ones(S_len - self.trainable_shift.shape[0])
         self.reset_parameters()
 
     def perform_svd(self):
@@ -97,8 +110,11 @@ class SVDConv2d(nn.Conv2d):
             s_new = (self.trainable_mlp((self.S.to(x.device)).flatten())).reshape(self.S.shape)
             weight_updated = self.U.to(x.device, dtype=x.dtype) @ torch.diag(F.relu(s_new)).to(x.device) @ self.Vt.to(device=x.device, dtype=x.dtype)
             reg_loss = torch.norm(s_new - self.S)
+        
         else:
-            weight_updated = self.U.to(x.device, dtype=x.dtype) @ torch.diag(F.relu(self.trainable_scale.to(x.device, dtype=x.dtype)*self.S.to(x.device, dtype=x.dtype) + self.trainable_shift)) @ self.Vt.to(device=x.device, dtype=x.dtype) 
+            scale = torch.cat([self.trainable_scale,self.frozen_scale.to(x.device)])
+            shift = torch.cat([self.trainable_shift, self.frozen_shift.to(x.device)])
+            weight_updated = self.U.to(x.device, dtype=x.dtype) @ torch.diag(F.relu(scale.to(x.device, dtype=x.dtype)*self.S.to(x.device, dtype=x.dtype) + shift)) @ self.Vt.to(device=x.device, dtype=x.dtype)
             reg_loss = torch.norm(1 - self.trainable_scale) + torch.norm(self.trainable_shift)
 
         weight_updated = rearrange(weight_updated, 'co (cin h w) -> co cin h w', cin=self.weight.size(1), h=self.weight.size(2), w=self.weight.size(3))

@@ -1,21 +1,19 @@
 data_transforms:
   a_min: 0
   a_max: 255
-  img_size: 1024
+  img_size: 256
   use_random_crop: False
   use_rotation: True
   rotation_angle: 10
-  use_saturation: True
+  use_saturation: False
   saturation: 2
   use_brightness: True
   brightness: 2
   use_horizontal_flip: True
-  use_cjitter: False
-  use_affine: False
 data:
-  name: GLAS
-  root_path: '/media/ubuntu/New Volume/jay/GLAS/archive'
-  label_list: [1]
-  label_names: ['Glands']
+  name: BTCV
+  root_path: '/media/ubuntu/New Volume/jay/BTCV'
+  label_list: [1,2,3,4,5,6,7,8]
+  label_names: ['Spleen', 'Right Kidney', 'Left Kidney', 'Gall Bladder', 'Liver', 'Stomach', 'Aorta', 'Pancreas']
   volume_channel: 2
   negative_to_positive_ratio: -1

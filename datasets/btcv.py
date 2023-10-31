@@ -5,10 +5,10 @@ import torch
 from PIL import Image
 from torch.utils.data import Dataset
 
-from data_transforms.glas_transform import GLAS_Transform
+from data_transforms.btcv_transform import BTCV_Transform
 
 
-class GLAS_Dataset(Dataset):
+class BTCV_Dataset(Dataset):
     def __init__(self, config, is_train=False, shuffle_list = True, apply_norm=True, no_text_mode=False) -> None:
         super().__init__()
         self.root_path = config['data']['root_path']
@@ -22,6 +22,16 @@ class GLAS_Dataset(Dataset):
         self.config = config
         self.apply_norm = apply_norm
         self.no_text_mode = no_text_mode
+        self.label_dict = {
+            "Spleen":1,
+            "Right Kidney": 2,
+            "Left Kidney": 3,
+            "Gall Bladder": 4,
+            "Liver": 5,
+            "Stomach": 6,
+            "Aorta": 7,
+            "Pancreas": 8
+        }
 
         self.populate_lists()
         if shuffle_list:
@@ -33,54 +43,51 @@ class GLAS_Dataset(Dataset):
             self.label_list = [self.label_list[pi] for pi in p]
 
         #define data transform
-        self.data_transform = GLAS_Transform(config=config)
+        self.data_transform = BTCV_Transform(config=config)
 
     def __len__(self):
         return len(self.img_path_list)
 
     def populate_lists(self):
-        if self.is_train:
-            imgs_path = os.path.join(self.root_path, 'train')
-            labels_path = os.path.join(self.root_path, 'train')
-        else:
-            # imgs_path = os.path.join(self.root_path, 'validation')
-            # labels_path = os.path.join(self.root_path, 'validation')
-            imgs_path = os.path.join(self.root_path, 'test')
-            labels_path = os.path.join(self.root_path, 'test')
+        imgs_labels_path = os.path.join(self.root_path, 'train_npz')
 
-        for img in os.listdir(imgs_path):
+        for npz in os.listdir(imgs_labels_path):
+            case_no = int(npz[4:npz.find("_")])
+            if self.is_train:
+                if case_no>=34:
+                    continue
+            else:
+                if case_no<34:
+                    continue
             # print(img)
-            if (('jpg' not in img) and ('jpeg not in img') and ('png' not in img) and ('bmp' not in img)):
-                continue
-            if 'anno' in img:
-                continue
             if self.no_text_mode:
-                self.img_names.append(img)
-                self.img_path_list.append(os.path.join(imgs_path,img))
-                self.label_path_list.append(os.path.join(labels_path, img[:-4]+'_anno.bmp'))
+                self.img_names.append(npz)
+                self.img_path_list.append(os.path.join(imgs_labels_path,npz))
+                self.label_path_list.append(os.path.join(imgs_labels_path, npz))
                 self.label_list.append('')
             else:
                 for label_name in self.label_names:
-                    self.img_names.append(img)
-                    self.img_path_list.append(os.path.join(imgs_path,img))
-                    self.label_path_list.append(os.path.join(labels_path, img[:-4]+'_anno.bmp'))
+                    self.img_names.append(npz)
+                    self.img_path_list.append(os.path.join(imgs_labels_path,npz))
+                    self.label_path_list.append(os.path.join(imgs_labels_path, npz))
                     self.label_list.append(label_name)
 
 
     def __getitem__(self, index):
-        img = torch.as_tensor(np.array(Image.open(self.img_path_list[index]).convert("RGB")))
-        if self.config['data']['volume_channel']==2:
-            img = img.permute(2,0,1)
+        data = np.load(self.img_path_list[index])
+        img, all_class_labels = data['image'], data['label']
+        print("img max min: ", np.max(img), np.min(img))
+        img = torch.Tensor(img).unsqueeze(0).repeat(3,1,1)
             
         try:
-            label = torch.Tensor(np.array(Image.open(self.label_path_list[index])))
+            label = torch.Tensor(all_class_labels)==self.label_dict[self.label_list[index]]+0
             if len(label.shape)==3:
                 label = label[:,:,0]
         except:
+            1/0
             label = torch.zeros(img.shape[1], img.shape[2])
         
         label = label.unsqueeze(0)
-        label = (label>0)+0
         label_of_interest = self.label_list[index]
 
         #convert all grayscale pixels due to resizing back to 0, 1

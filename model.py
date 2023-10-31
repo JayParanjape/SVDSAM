@@ -161,6 +161,7 @@ class Prompt_Adapted_SAM(nn.Module):
         if self.prompt_config['USE_TEXT_PROMPT'] and self.training_strategy=='prompttuning':
             text_features_affine = text_features_affine + prompt_text
         text_features_affine = text_features_affine.unsqueeze(1)
+        text_features_affine = text_features_affine.repeat(1,self.prompt_config['NUM_TEXT_REPEAT'],1)
         sparse_embeddings = sparse_embeddings.to(self.device).repeat(B,1,1)
         if self.prompt_config['USE_SLICE_NUM']:
             # print(sparse_embeddings.shape)
@@ -171,7 +172,7 @@ class Prompt_Adapted_SAM(nn.Module):
         else:
             sparse_embeddings = torch.cat(
                 [sparse_embeddings, text_features_affine], dim=1)    
-        # print(sparse_embeddings.shape)
+        # print("sparse embedding shape: ", sparse_embeddings.shape)
         # sparse_embeddings = sparse_embeddings.squeeze()
         # sparse_embeddings = sparse_embeddings.unsqueeze(1)
 

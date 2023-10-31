@@ -10,6 +10,7 @@ mlp_transform: False
 
 prompts:
   USE_TEXT_PROMPT: True
+  NUM_TEXT_REPEAT: 1
   USE_IMAGE_PROMPT: False
   USE_SLICE_NUM: False
   LOCATION: 'prepend'
@@ -19,10 +20,10 @@ prompts:
 training:
   optimizer: 'adamw'
   lr: 1e-3
-  batch_size: 32
+  batch_size: 2
   num_epochs: 1000
-  schedule_step: 5000
+  schedule_step: 200
   schedule_step_factor: 0.2
   weight_decay: 1e-2
-  loss: 'focal'
+  loss: 'CE+dice'
   reg_multiplier: 0

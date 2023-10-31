@@ -6,7 +6,7 @@ from torchvision.transforms import functional as F
 from torch.nn.functional import pad
 
 
-class GLAS_Transform():
+class BTCV_Transform():
     def __init__(self, config):
         self.pixel_mean = torch.Tensor([123.675, 116.28, 103.53]).view(-1,1,1)
         self.pixel_std = torch.Tensor([53.395, 57.12, 57.375]).view(-1,1,1)
@@ -46,27 +46,6 @@ class GLAS_Transform():
                 p = random.random()
                 if p<0.5:
                     img = F.adjust_brightness(img, self.brightness*max(0.5,random.random()))
-
-            #adjust color jitter with some probability
-            if self.data_transforms['use_cjitter']:
-                p = random.random()
-                if p<0.5:
-                    brightness = random.uniform(0,0.2)
-                    contrast = random.uniform(0,0.2)
-                    saturation = random.uniform(0,0.2)
-                    hue = random.uniform(0,0.1)
-                    img = F.adjust_brightness(img, brightness_factor=brightness)
-                    img = F.adjust_contrast(img, contrast_factor=contrast)
-                    img = F.adjust_saturation(img, saturation_factor=saturation)
-                    img = F.adjust_hue(img, hue_factor=hue)
-
-            #affine transforms with some probability
-            if self.data_transforms['use_affine']:
-                p = random.random()
-                if p<0.5:
-                    scale = random.uniform(0.9,1)
-                    img = F.affine(img, translate=[5,5], scale=scale, angle=5, shear=0)
-                    mask = F.affine(img, translate=[5,5], scale=scale, angle=5, shear=0)
 
         #take random crops of img size X img_size such that label is non zero
         if self.data_transforms['use_random_crop']:

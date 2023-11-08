@@ -24,6 +24,7 @@ from data_transforms.ultrasound_transform import Ultrasound_Transform
 from data_transforms.kvasirSeg_transform import kvasirSeg_Transform
 from data_transforms.ChestXDet_transform import ChestXDet_Transform
 from data_transforms.lits2_transform import LiTS2_Transform
+from data_transforms.btcv_transform import BTCV_Transform
 
 from datasets.isic2018 import ISIC2018_Dataset
 from datasets.polyp import Polyp_Dataset
@@ -581,9 +582,10 @@ class Cholec_Ins_Dataset(Dataset):
         self.num_classes = len(list(self.label_dict.keys()))
 
         if is_train:
-            self.folder_list = ['video01','video09','video12','video17','video18','video20','video24','video25', 'video26']
+            self.folder_list = ['video01','video09','video18','video20','video24','video25', 'video26','video35', 'video43', 'video55', 'video28', 'video37']
         else:
-            self.folder_list = ['video27','video28']
+            # self.folder_list = ['video17','video52']
+            self.folder_list = ['video12','video27']
         #populate the above lists
         self.populate_lists()
 

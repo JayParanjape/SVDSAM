@@ -76,7 +76,7 @@ class BTCV_Dataset(Dataset):
     def __getitem__(self, index):
         data = np.load(self.img_path_list[index])
         img, all_class_labels = data['image'], data['label']
-        print("img max min: ", np.max(img), np.min(img))
+        # print("img max min: ", np.max(img), np.min(img))
         img = torch.Tensor(img).unsqueeze(0).repeat(3,1,1)
             
         try:

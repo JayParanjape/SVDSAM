@@ -7,4 +7,5 @@
 *.jpg
 *.JPG
 *.tif
+*.bmp
 __pycache__

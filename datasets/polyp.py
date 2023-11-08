@@ -56,8 +56,16 @@ class Polyp_Dataset(Dataset):
     def populate_lists(self):
         # imgs_path = os.path.join(self.root_path, 'CVC_clinicTRimage')
         # labels_path = os.path.join(self.root_path, 'CVC_clinicTRmask')
-        imgs_path = os.path.join(self.root_path, 'kvasirsegTRimage')
-        labels_path = os.path.join(self.root_path, 'kvasirsegTRmask')
+        # imgs_path = os.path.join(self.root_path, 'kvasirsegTRimage')
+        # labels_path = os.path.join(self.root_path, 'kvasirsegTRmask')
+        if self.is_train:
+            imgs_path = os.path.join(self.root_path, 'TrainDataset/image')
+            labels_path = os.path.join(self.root_path, 'TrainDataset/masks')
+        else:
+            imgs_path = os.path.join(self.root_path, 'TestDataset/CVC-ColonDB/images')
+            labels_path = os.path.join(self.root_path, 'TestDataset/CVC-ColonDB/masks')
+        # imgs_path = os.path.join(self.root_path, 'NewTRimage')
+        # labels_path = os.path.join(self.root_path, 'NewTRmask')
         # if self.is_train:
         #     df = pd.read_csv(self.train_df)
         # else:

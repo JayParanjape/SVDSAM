@@ -29,6 +29,10 @@ class Prompt_Adapted_SAM(nn.Module):
         self.im_type = config['img_type']
         self.use_fdn = config['use_fdn']
         self.training_strategy = training_strategy
+        self.encoder_embed_dim= 1280 if config['sam']['sam_type']=='huge' else 768
+        self.encoder_depth=32 if config['sam']['sam_type']=='huge' else 12
+        self.encoder_num_heads=16 if config['sam']['sam_type']=='huge' else 12
+        self.encoder_global_attn_indexes=[7, 15, 23, 31] if config['sam']['sam_type']=='huge' else [2, 5, 8, 11]
 
         #define hyperparameters, can be taken to a config later
         prompt_embed_dim=256
@@ -37,7 +41,7 @@ class Prompt_Adapted_SAM(nn.Module):
 
         print(self.prompt_config)
         #define pretrained clip and sam models
-        self.sam_encoder = ImageEncoderViT(img_size=self.img_size,prompt_config=self.prompt_config, mlp_transform=config['mlp_transform'], use_lora=config['use_lora'])
+        self.sam_encoder = ImageEncoderViT(img_size=self.img_size,prompt_config=self.prompt_config, mlp_transform=config['mlp_transform'], use_lora=config['use_lora'], embed_dim=self.encoder_embed_dim, depth=self.encoder_depth, num_heads=self.encoder_num_heads, global_attn_indexes=self.encoder_global_attn_indexes)
         self.clip_model, _  = clip.load("ViT-B/32", device=device)
 
         #define the components of sam
@@ -91,26 +95,54 @@ class Prompt_Adapted_SAM(nn.Module):
 
         #initialize sam with pretrained weights
         sam_ckpt = '/home/ubuntu/Desktop/Domain_Adaptation_Project/repos/segment-anything/checkpoints/sam_vit_b_01ec64.pth'
+        # sam_ckpt = '/home/ubuntu/Desktop/Domain_Adaptation_Project/repos/segment-anything/checkpoints/sam_vit_h_4b8939.pth'
         # sam_ckpt = '/mnt/store/jparanj1/sam_vit_b_01ec64.pth'
         sam_state_dict = torch.load(sam_ckpt)
+
+        #for medsam analysis
+        # sam_ckpt = '/media/ubuntu/New Volume/jay/medsam_vit_b.pth'
+        # sam_state_dict = torch.load(sam_ckpt)
+
+
         for k in list(sam_state_dict.keys()):
             if self.img_size!=1024:
                 #pos embed can be loaded only when image size is 1024
                 if "pos_embed" in k:
                     full_matrix = sam_state_dict.pop(k)
+
                     adapted_matrix = nn.functional.adaptive_avg_pool2d(full_matrix.permute(0,3,1,2), (self.sam_encoder.pos_embed.shape[1], self.sam_encoder.pos_embed.shape[2]))
                     adapted_matrix = adapted_matrix.permute(0,2,3,1)
                     sam_state_dict[k] = adapted_matrix
+
             elif "image_encoder." in k:
-                sam_state_dict[k[14:]] = sam_state_dict.pop(k)
+                if 'image_encoder.neck' in k:
+                    if '0' in k:
+                        new_key = k.replace('0','conv1')
+                    if '1' in k:
+                        new_key = k.replace('1','ln1')
+                    if '2' in k:
+                        new_key = k.replace('2','conv2')
+                    if '3' in k:
+                        new_key = k.replace('3','ln2')
+                    new_key = new_key[14:]
+                    sam_state_dict[new_key] = sam_state_dict[k]
+                    _ = sam_state_dict.pop(k)
+                
+                else:
+                    sam_state_dict[k[14:]] = sam_state_dict.pop(k)
+
+
             elif "prompt_encoder." in k:
                 sam_state_dict[k[15:]] = sam_state_dict.pop(k)
+
             elif "mask_decoder." in k:
                 sam_state_dict[k[13:]] = sam_state_dict.pop(k)
 
 
         self.sam_encoder.load_state_dict(sam_state_dict,strict=False)
+
         self.prompt_encoder.load_state_dict(sam_state_dict, strict=False)
+
         self.mask_decoder.load_state_dict(sam_state_dict,strict=False)
 
     def forward(self, x_img, x_text, slice_num=0):
@@ -194,6 +226,28 @@ class Prompt_Adapted_SAM(nn.Module):
             if self.use_fdn:
                 image_embeddings = self.FDN_branch(image_embeddings, x_img)
             return image_embeddings
+
+    def get_masks_with_manual_prompts(self, img_embeds, points=None, boxes=None, masks=None):
+        B = img_embeds.shape[0]
+        sparse_embeddings, dense_embeddings = self.prompt_encoder(
+                points=points,
+                boxes=boxes,
+                masks=masks,
+            )
+        # print("sparse embeddings shape: ", sparse_embeddings.shape)
+        low_res_masks, iou_predictions = self.mask_decoder(
+                    image_embeddings=img_embeds,
+                    image_pe=self.prompt_encoder.get_dense_pe(),
+                    sparse_prompt_embeddings=sparse_embeddings,
+                    dense_prompt_embeddings=dense_embeddings,
+                    multimask_output=False,
+                    use_gsam = False
+                )
+        high_res_masks = self.postprocess_masks(low_res_masks, (self.img_size,self.img_size), (self.img_size,self.img_size))
+        return high_res_masks
+        
+
+
 
     def get_masks_for_multiple_labels(self, img_embeds, x_text):
         '''

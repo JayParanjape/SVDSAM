@@ -1,6 +1,7 @@
 sam:
   img_size: 256
   num_classes: 13
+  sam_type: "base"
 
 img_type: 'image'
 arch: "Prompt Adapted SAM"

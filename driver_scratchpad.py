@@ -95,29 +95,31 @@ def main_model(config):
 
     #freeze correct weights
     for p in model.parameters():
-        p.requires_grad=False
+        p.requires_grad=True
 
     #unfreeze according to strategy:    
     for name, p in model.named_parameters():
-        if training_strategy=='svdtuning':
-            if 'trainable' in name.lower():
-                p.requires_grad = True
-        elif training_strategy=='biastuning':
-            if ('bias' in name.lower()) and ('clip' not in name.lower()):
-                p.requires_grad = True
-        elif training_strategy=='svdbiastuning':
-            if 'trainable' in name.lower():
-                p.requires_grad = True
-            if ('bias' in name.lower()) and ('clip' not in name.lower()):
-                p.requires_grad = True
+        # if training_strategy=='svdtuning':
+        #     if 'trainable' in name.lower():
+        #         p.requires_grad = True
+        # elif training_strategy=='biastuning':
+        #     if ('bias' in name.lower()) and ('clip' not in name.lower()):
+        #         p.requires_grad = True
+        # elif training_strategy=='svdbiastuning':
+        #     if 'trainable' in name.lower():
+        #         p.requires_grad = True
+            # if ('bias' in name.lower()) and ('clip' not in name.lower()):
+            #     p.requires_grad = True
         
         if model_config['prompts']['USE_TEXT_PROMPT']:
             if 'Text_Embedding_Affine' in name:
                 p.requires_grad = True
+        if 'clip' in name:
+            p.requires_grad = False
 
-    for name, p in model.named_parameters():
-        if p.requires_grad:
-            print(name)
+    # for name, p in model.named_parameters():
+    #     if p.requires_grad:
+    #         print(name)
     print('number of trainable parameters: ', sum(p.numel() for p in model.parameters() if p.requires_grad))
     
     return
@@ -226,7 +228,9 @@ def main_train(data_config, model_config, pretrained_path, save_path, training_s
 
     #freeze correct weights
     for p in model.parameters():
+        # p.requires_grad=True
         p.requires_grad=False
+
 
     #unfreeze according to strategy:    
     for name, p in model.named_parameters():
@@ -263,7 +267,8 @@ def main_train(data_config, model_config, pretrained_path, save_path, training_s
                 p.requires_grad = False
         
         if 'prompt_encoder' in name.lower():
-            p.requires_grad = False
+            # p.requires_grad = False
+            p.requires_grad = True
 
         #common parameters
         if 'norm' in name.lower():

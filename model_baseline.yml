@@ -1,6 +1,6 @@
 
 img_size: 256
-num_classes: 13
+num_classes: 1
 in_channels: 3
 img_type: 'image'
 arch: "MedT"
@@ -9,9 +9,9 @@ use_fdn: False
 training:
   optimizer: 'adamw'
   lr: 1e-4
-  batch_size: 16
+  batch_size: 32
   num_epochs: 500
   schedule_step: 2100
   schedule_step_factor: 0.5
   weight_decay: 1e-2
-  loss: 'focal'
+  loss: 'dice+CE'

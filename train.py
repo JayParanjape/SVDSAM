@@ -112,6 +112,7 @@ def train_dl(model, datasets, dataset_sizes, criterion, optimizer, scheduler, sa
     best_loss=10000
 
     print("Training parameters: \n----------")
+    print('number of trainable parameters: ', sum(p.numel() for p in model.parameters() if p.requires_grad))
     print("batch size: ", bs)
     print("num epochs: ", num_epochs)
     for epoch in range(num_epochs):

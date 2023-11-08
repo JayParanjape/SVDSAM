@@ -52,7 +52,7 @@ def weighted_ce_loss(y_pred, y_true, alpha=64, smooth=1):
     loss = -torch.mean(torch.mean((multiplier_1*y_true*torch.log(y_pred)) + (1-y_true)*(torch.log(1-y_pred)),dim=(-1,-2)))
     return loss
 
-def focal_loss(y_pred, y_true, alpha_def=0.75, gamma=2):
+def focal_loss(y_pred, y_true, alpha_def=0.75, gamma=3):
     # print('going back to the default value of alpha')
     alpha = alpha_def
     ce_loss = F.binary_cross_entropy_with_logits(y_pred, y_true, reduction="none")
@@ -62,10 +62,12 @@ def focal_loss(y_pred, y_true, alpha_def=0.75, gamma=2):
     loss = ce_loss * ((1 - p_t) ** gamma)
     alpha_t = alpha * y_true + (1 - alpha) * (1 - y_true)
     loss = alpha_t * loss
-    loss = torch.sum(loss, dim=(-1,-2))
+    loss = torch.mean(loss, dim=(-1,-2))
     return loss.mean()
 
 def multiclass_focal_loss(y_pred, y_true, alpha = 0.75, gamma=3):
+    if len(y_pred.shape)==4:
+        y_pred = y_pred.squeeze()
     ce = y_true*(-torch.log(y_pred))
     weight = y_true * ((1-y_pred)**gamma)
     fl = torch.sum(alpha*weight*ce, dim=(-1,-2))

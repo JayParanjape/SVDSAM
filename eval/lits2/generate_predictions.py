@@ -99,8 +99,8 @@ def main():
     imgs_path = os.path.join(root_path, 'dataset_6/dataset_6')
     test_csv = pd.read_csv(os.path.join(root_path, 'lits_test.csv'))
     for i in range(len(test_csv)):
-        # if i%10!=0:
-        #     continue
+        if i%10!=0:
+            continue
         img_path = (os.path.join(root_path,'dataset_6',test_csv['filepath'].iloc[i][18:]))
         image_name = test_csv['filepath'].iloc[i][28:]
         liver_mask_path = os.path.join(root_path,'dataset_6',test_csv['liver_maskpath'].iloc[i][18:])

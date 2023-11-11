@@ -1,7 +1,7 @@
 data_transforms:
   a_min: 0
   a_max: 255
-  img_size: 512
+  img_size: 1024
   use_random_crop: False
   use_rotation: True
   rotation_angle: 10

@@ -1,5 +1,5 @@
 sam:
-  img_size: 1024
+  img_size: 256
   num_classes: 1
   sam_type: 'base'
 
@@ -10,7 +10,7 @@ decoder_training: 'none'
 mlp_transform: False
 
 prompts:
-  USE_TEXT_PROMPT: False
+  USE_TEXT_PROMPT: True
   USE_IMAGE_PROMPT: False
   USE_SLICE_NUM: False
   LOCATION: 'prepend'

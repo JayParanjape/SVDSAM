@@ -267,8 +267,8 @@ def main_train(data_config, model_config, pretrained_path, save_path, training_s
                 p.requires_grad = False
         
         if 'prompt_encoder' in name.lower():
-            # p.requires_grad = False
-            p.requires_grad = True
+            p.requires_grad = False
+            # p.requires_grad = True
 
         #common parameters
         if 'norm' in name.lower():

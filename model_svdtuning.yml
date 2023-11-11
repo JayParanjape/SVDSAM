@@ -6,11 +6,11 @@ sam:
 img_type: 'image'
 arch: "Prompt Adapted SAM"
 use_fdn: False
-decoder_training: 'full'
+decoder_training: 'none'
 mlp_transform: False
 
 prompts:
-  USE_TEXT_PROMPT: False
+  USE_TEXT_PROMPT: True
   NUM_TEXT_REPEAT: 1
   USE_IMAGE_PROMPT: False
   USE_SLICE_NUM: False
@@ -21,7 +21,7 @@ prompts:
 training:
   optimizer: 'adamw'
   lr: 1e-3
-  batch_size: 32
+  batch_size: 2
   num_epochs: 1000
   schedule_step: 200
   schedule_step_factor: 0.2

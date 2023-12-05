@@ -1,5 +1,5 @@
 sam:
-  img_size: 256
+  img_size: 1024
   num_classes: 13
   sam_type: "base"
 
@@ -20,7 +20,7 @@ prompts:
 
 training:
   optimizer: 'adamw'
-  lr: 1e-4
+  lr: 1e-3
   batch_size: 9
   num_epochs: 1000
   schedule_step: 200

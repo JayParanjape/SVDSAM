@@ -32,6 +32,7 @@ from datasets.rite import RITE_Dataset
 from datasets.glas import GLAS_Dataset
 from datasets.refuge import Refuge_Dataset
 from datasets.btcv import BTCV_Dataset
+from datasets.atr import ATR_Dataset
 
 def make_positive_negative_files(config, output_root, label_dict, populated_img_path_list, populated_gt_list, populated_classname_list, rgb_gt = False, name_prefix='val'):
     # generates positive and negative example files for each class
@@ -1382,6 +1383,14 @@ def get_data(config, tr_folder_start, tr_folder_end, val_folder_start, val_folde
                 dataset_dict[x] = BTCV_Dataset(config, shuffle_list=True, is_train=True, apply_norm=use_norm, no_text_mode=no_text_mode)
             if x=='val':
                 dataset_dict[x] = BTCV_Dataset(config, shuffle_list=False, apply_norm=use_norm, is_train=False, no_text_mode=no_text_mode)
+            dataset_sizes[x] = len(dataset_dict[x])
+    
+    elif config['data']['name']=='ATR':
+        for x in ['train','val']:
+            if x=='train':
+                dataset_dict[x] = ATR_Dataset(config, shuffle_list=True, is_train=True, apply_norm=use_norm, no_text_mode=no_text_mode)
+            if x=='val':
+                dataset_dict[x] = ATR_Dataset(config, shuffle_list=False, apply_norm=use_norm, is_train=False, no_text_mode=no_text_mode)
             dataset_sizes[x] = len(dataset_dict[x])
 
     else:

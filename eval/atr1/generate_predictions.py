@@ -8,9 +8,9 @@ sys.path.append("/home/ubuntu/Desktop/Domain_Adaptation_Project/repos/SVDSAM/")
 from data_utils import *
 from model import *
 from utils import *
-from data_transforms.glas_transform import GLAS_Transform
+from data_transforms.atr_transform import ATR_Transform
 
-label_names = ['Glands']
+label_names = ['Military Vehicle']
 label_dict = {}
 # visualize_dict = {}
 for i,ln in enumerate(label_names):
@@ -20,8 +20,8 @@ for i,ln in enumerate(label_names):
 def parse_args():
     parser = argparse.ArgumentParser()
 
-    parser.add_argument('--data_folder', default='config_tmp.yml',
-                        help='data folder file path')
+    parser.add_argument('--csv_path', default='config_tmp.yml',
+                        help='data csv file path')
 
     parser.add_argument('--data_config', default='config_tmp.yml',
                         help='data config file path')
@@ -35,8 +35,11 @@ def parse_args():
     parser.add_argument('--save_path', default='checkpoints/temp.pth',
                         help='pretrained model path')
 
-    parser.add_argument('--gt_path', default='',
-                        help='ground truth path')
+    parser.add_argument('--root_path', default='.',
+                        help='root path to the groundtruth')
+
+    parser.add_argument('--img_folder_path', default='.',
+                        help='path to the image folder')
 
     parser.add_argument('--device', default='cuda:0', help='device to train on')
 
@@ -59,12 +62,11 @@ def main():
     #make folder to save visualizations
     os.makedirs(os.path.join(args.save_path,"preds"),exist_ok=True)
     os.makedirs(os.path.join(args.save_path,"rescaled_preds"),exist_ok=True)
-    if args.gt_path:
-        os.makedirs(os.path.join(args.save_path,"rescaled_gt"),exist_ok=True)
+    os.makedirs(os.path.join(args.save_path,"rescaled_gt"),exist_ok=True)
 
     #load model
-    # model = Prompt_Adapted_SAM(config=model_config, label_text_dict=label_dict, device=args.device, training_strategy='svdtuning')
-    model = Prompt_Adapted_SAM(config=model_config, label_text_dict=label_dict, device=args.device, training_strategy='lora')
+    model = Prompt_Adapted_SAM(config=model_config, label_text_dict=label_dict, device=args.device, training_strategy='svdtuning')
+    # model = Prompt_Adapted_SAM(config=model_config, label_text_dict=label_dict, device=args.device, training_strategy='lora')
     
     #legacy model support
     if args.pretrained_path:
@@ -90,40 +92,33 @@ def main():
     model = model.eval()
 
     #load data transform
-    data_transform = GLAS_Transform(config=data_config)
+    data_transform = ATR_Transform(config=data_config)
 
     #dice
     dices = []
     ious=[]
 
     #load data
-    for i,img_name in enumerate(sorted(os.listdir(args.data_folder))):
-        if (('png' not in img_name) and ('jpg' not in img_name) and ('jpeg' not in img_name) and ('bmp' not in img_name)):
-            continue
-        if 'anno' in img_name:
-            continue
-        # if i%5!=0:
-        #     continue
-        img_path = (os.path.join(args.data_folder,img_name))
-        if args.gt_path:
-            gt_path = (os.path.join(args.data_folder,img_name[:-4]+'_anno.bmp'))
+    df_test = pd.read_csv(args.csv_path)
+    for i in range(len(df_test)):
+        gt_path = os.path.join(args.root_path,df_test['mask_path'][i])
+        img_path = os.path.join(args.img_folder_path, df_test['mask_path'][i][11:])
+        img_name = df_test['mask_path'][i][11:]
 
-        # print(img_path)
+        # print("img_path: ",img_path)
+        # print("gt_path: ",gt_path)
         img = torch.as_tensor(np.array(Image.open(img_path).convert("RGB")))
         img = img.permute(2,0,1)
         C,H,W = img.shape
         #make a dummy mask of shape 1XHXW
-        if args.gt_path:
-            label = torch.Tensor(np.array(Image.open(gt_path)))
-            if len(label.shape)==3:
-                label = label[:,:,0]
-            label = label.unsqueeze(0)
-            mask = (label>0)+0
-            # plt.imshow(gold)
-            # plt.show()
+        label = torch.Tensor(np.array(Image.open(gt_path)))
+        if len(label.shape)==3:
+            label = label[:,:,0]
+        label = label.unsqueeze(0)
+        mask = (label>0)+0
+        # plt.imshow(gold)
+        # plt.show()
 
-        else:
-            mask = torch.zeros((1,H,W))
         img, mask = data_transform(img, mask, is_train=False, apply_norm=True)
         mask = (mask>=0.5)+0
 
@@ -140,10 +135,9 @@ def main():
         plt.savefig(os.path.join(args.save_path,'rescaled_preds', img_name[:-4]+'.png'))
         plt.close()
 
-        if args.gt_path:
-            plt.imshow((mask[0]), cmap='gray')
-            plt.savefig(os.path.join(args.save_path,'rescaled_gt', img_name[:-4]+'.png'))
-            plt.close()
+        plt.imshow((mask[0]), cmap='gray')
+        plt.savefig(os.path.join(args.save_path,'rescaled_gt', img_name))
+        plt.close()
 
         # print("dice: ",dice_coef(label, (masks>0.5)+0))
         dices.append(dice_coef(mask, (masks>=0.5)+0))

@@ -5,17 +5,17 @@ data_transforms:
   use_random_crop: False
   use_rotation: True
   rotation_angle: 10
-  use_saturation: True
+  use_saturation: False
   saturation: 2
-  use_brightness: True
+  use_brightness: False
   brightness: 2
   use_horizontal_flip: True
   use_cjitter: False
   use_affine: False
 data:
-  name: GLAS
-  root_path: '/media/ubuntu/New Volume/jay/GLAS/archive'
+  name: ATR
+  root_path: '/media/ubuntu/New Volume/jay/ATR/atr_dataset/cegr'
   label_list: [1]
-  label_names: ['Glands']
+  label_names: ['Vehicle']
   volume_channel: 2
   negative_to_positive_ratio: -1

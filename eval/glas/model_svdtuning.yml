@@ -1,5 +1,5 @@
 sam:
-  img_size: 256
+  img_size: 1024
   num_classes: 1
   sam_type: 'base'
 
@@ -28,4 +28,4 @@ training:
   loss: 'focal'
   reg_multiplier: 0
 
-use_lora: False
+use_lora: True

@@ -208,6 +208,11 @@ def main_train(data_config, model_config, pretrained_path, save_path, training_s
         dataloader_dict = {}
         for x in ['train','val']:
             dataloader_dict[x] = torch.utils.data.DataLoader(dataset_dict[x], batch_size=model_config['training']['batch_size'], shuffle=True, num_workers=4)
+    elif data_config['data']['name']=='ATR':
+        dataset_dict, dataset_sizes, label_dict = get_data(data_config, tr_folder_start=0, tr_folder_end=18000, val_folder_start=0, val_folder_end=34444)
+        dataloader_dict = {}
+        for x in ['train','val']:
+            dataloader_dict[x] = torch.utils.data.DataLoader(dataset_dict[x], batch_size=model_config['training']['batch_size'], shuffle=True, num_workers=4)
 
 
     #load model
@@ -218,6 +223,9 @@ def main_train(data_config, model_config, pretrained_path, save_path, training_s
         model_config['use_lora'] = True
     else:
         model_config['use_lora'] = False
+
+    if training_strategy=='biastuning':
+        model_config['decoder_training'] = 'full'
 
     if model_config['arch']=='Prompt Adapted SAM':
         model = Prompt_Adapted_SAM(model_config, label_dict, device, training_strategy=training_strategy)
@@ -299,8 +307,8 @@ def main_train(data_config, model_config, pretrained_path, save_path, training_s
     if criterion==[]:
         criterion = [nn.BCELoss()]
     
-    retain_graph = False if model_config['decoder_training']=='none' else True
-    # retain_graph=False
+    # retain_graph = False if model_config['decoder_training']=='none' else True
+    retain_graph=False
 
     #train the model
     if data_config['data']['name']=='LITS':
@@ -336,6 +344,8 @@ def main_train(data_config, model_config, pretrained_path, save_path, training_s
     elif data_config['data']['name']=='Refuge':
         model = train_dl(model, dataset_dict, dataset_sizes, criterion, optimizer, exp_lr_scheduler, save_path, num_epochs=training_params['num_epochs'], bs=training_params['batch_size'], device=device, retain_graph=retain_graph, neg2pos_ratio=data_config['data']['negative_to_positive_ratio'], reg_multiplier=model_config['training']['reg_multiplier'])
     elif data_config['data']['name']=='BTCV':
+        model = train_dl(model, dataset_dict, dataset_sizes, criterion, optimizer, exp_lr_scheduler, save_path, num_epochs=training_params['num_epochs'], bs=training_params['batch_size'], device=device, retain_graph=retain_graph, neg2pos_ratio=data_config['data']['negative_to_positive_ratio'], reg_multiplier=model_config['training']['reg_multiplier'])
+    elif data_config['data']['name']=='ATR':
         model = train_dl(model, dataset_dict, dataset_sizes, criterion, optimizer, exp_lr_scheduler, save_path, num_epochs=training_params['num_epochs'], bs=training_params['batch_size'], device=device, retain_graph=retain_graph, neg2pos_ratio=data_config['data']['negative_to_positive_ratio'], reg_multiplier=model_config['training']['reg_multiplier'])
 
 

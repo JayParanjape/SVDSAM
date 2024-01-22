@@ -1,6 +1,7 @@
 sam:
   img_size: 256
   num_classes: 9
+  sam_type: "base"
 
 img_type: 'image'
 arch: "Prompt Adapted SAM"
@@ -27,4 +28,4 @@ training:
   loss: 'focal'
   reg_multiplier: 0
 
-use_lora: False
+use_lora: True

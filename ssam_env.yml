@@ -1,4 +1,4 @@
-name: dassl
+name: s-sam
 channels:
   - pytorch
   - nvidia

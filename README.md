@@ -17,7 +17,7 @@ conda activate s-sam
 - driver_scratchpad.py - driver code for training models. 
 - eval/*/generate_predictions.py - code for generating results for a given dataset
 - eval/*/generate_predictions.sh - script to run generate_predictions for generating results for all labels of interest.
-- model_loratuning.yml - config file for defining various model hyperparameters for LoRASAM
+- model_svdtuning.yml - config file for defining various model hyperparameters for SVDSAM
 - config_<dataset_name>.yml - config file for defining various dataset related hyperparameters
   
 ## Example Usage for Training

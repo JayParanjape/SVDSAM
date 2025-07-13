@@ -94,9 +94,7 @@ class Prompt_Adapted_SAM(nn.Module):
             self.slice_embedding = nn.Embedding(1024,128)
 
         #initialize sam with pretrained weights
-        sam_ckpt = '/home/ubuntu/Desktop/Domain_Adaptation_Project/repos/segment-anything/checkpoints/sam_vit_b_01ec64.pth'
-        # sam_ckpt = '/home/ubuntu/Desktop/Domain_Adaptation_Project/repos/segment-anything/checkpoints/sam_vit_h_4b8939.pth'
-        # sam_ckpt = '/mnt/store/jparanj1/sam_vit_b_01ec64.pth'
+        sam_ckpt = '/mnt/store/jparanj1/Swaroop_SSAM/checkpoints/sam_vit_b_01ec64.pth'
         sam_state_dict = torch.load(sam_ckpt)
 
         #for medsam analysis

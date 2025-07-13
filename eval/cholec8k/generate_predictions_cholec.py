@@ -3,7 +3,7 @@ import yaml
 import sys
 import copy
 import os
-sys.path.append("/home/ubuntu/Desktop/Domain_Adaptation_Project/repos/SVDSAM/")
+sys.path.append("../..")
 
 from data_utils import *
 from model import *
@@ -86,21 +86,21 @@ def main():
 
     #legacy model support
     sdict = torch.load(args.pretrained_path, map_location=args.device)
-    # for key in list(sdict.keys()):
-    #     if 'sam_encoder.neck' in key:
-    #         if '0' in key:
-    #             new_key = key.replace('0','conv1')
-    #         if '1' in key:
-    #             new_key = key.replace('1','ln1')
-    #         if '2' in key:
-    #             new_key = key.replace('2','conv2')
-    #         if '3' in key:
-    #             new_key = key.replace('3','ln2')
-    #         sdict[new_key] = sdict[key]
-    #         _ = sdict.pop(key)
-    #     if 'mask_decoder' in key:
-    #         if 'trainable' in key:
-    #             _ = sdict.pop(key)   
+    for key in list(sdict.keys()):
+        if 'sam_encoder.neck' in key:
+            if '0' in key:
+                new_key = key.replace('0','conv1')
+            if '1' in key:
+                new_key = key.replace('1','ln1')
+            if '2' in key:
+                new_key = key.replace('2','conv2')
+            if '3' in key:
+                new_key = key.replace('3','ln2')
+            sdict[new_key] = sdict[key]
+            _ = sdict.pop(key)
+        if 'mask_decoder' in key:
+            if 'trainable' in key:
+                _ = sdict.pop(key)   
     
     model.load_state_dict(sdict,strict=True)
     

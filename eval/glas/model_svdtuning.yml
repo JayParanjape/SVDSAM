@@ -28,4 +28,4 @@ training:
   loss: 'focal'
   reg_multiplier: 0
 
-use_lora: True
+use_lora: False

@@ -251,4 +251,5 @@ dependencies:
     - wilds==1.2.2
     - yacs==0.1.8
     - yapf==0.29.0
+    - einops
 prefix: /home/ubuntu/anaconda3/envs/dassl

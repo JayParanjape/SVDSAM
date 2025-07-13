@@ -78,7 +78,7 @@ dependencies:
   - libsodium=1.0.18=h7b6447c_0
   - libstdcxx-ng=11.2.0=h1234567_1
   - matplotlib-inline=0.1.6=py38h06a4308_0
-  - ml-collections
+  # - ml-collections
   - ncurses=6.4=h6a678d5_0
   - nest-asyncio=1.5.6=py38h06a4308_0
   - nsight-compute=2022.4.0.15=0
@@ -198,7 +198,7 @@ dependencies:
     - psutil==5.9.4
     - pyasn1==0.4.8
     - pyasn1-modules==0.2.8
-    - pycocotools==2.0.6
+    # - pycocotools==2.0.6
     - pycodestyle==2.5.0
     - pyflakes==2.1.1
     - pyparsing==3.0.9
